@@ -1,4 +1,4 @@
-all: pointer_generator write_pointer_to_disk host_pointer_reader nsc_pointer_reader
+all: pointer_generator write_pointer_to_disk host_pointer_reader nsc_pointer_reader stream_pointer_reader
 
 pointer_generator: pointer_generator.cpp
 	g++ pointer_generator.cpp -o pointer_generator	
@@ -12,5 +12,8 @@ host_pointer_reader: host_pointer_reader.c
 nsc_pointer_reader: nsc_pointer_reader.c
 	gcc nsc_pointer_reader.c -o nsc_pointer_reader
 
+stream_pointer_reader: stream_pointer_reader.c
+	gcc -D_GNU_SOURCE stream_pointer_reader.c -o stream_pointer_reader
+
 clean:
-	rm -f pointer_generator write_pointer_to_disk host_pointer_reader nsc_pointer_reader
+	rm -f pointer_generator write_pointer_to_disk host_pointer_reader nsc_pointer_reader stream_pointer_reader
