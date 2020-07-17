@@ -100,7 +100,7 @@ int do_count(int computational_fd_send, int computational_fd_recv, void *mb , ui
 
 /* Coperd: directly read/write to memory backend from blackbox mode */
 int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
-        uint64_t data_offset, bool is_write, int computational_fd_send, int computational_fd_recv)
+        uint64_t data_offset, bool is_write, int computational_fd_send, int computational_fd_recv, uint8_t computetype)
 {
     int sg_cur_index = 0;
     dma_addr_t sg_cur_byte = 0;
@@ -135,18 +135,28 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
 	if (mbe->computation_mode) {
 		// if (is_write) : Write Based computation, eg. compression. else:
 		if (!is_write && ((mb + mb_oft) != NULL) ) {
-			#ifdef COUNTING
-			ret = do_count(computational_fd_send, computational_fd_recv, mb, mb_oft, cur_len);
-			if (ret < 0) {
-				printf("Error occured while counting %s\n", strerror(ret));
+			switch (computetype) {
+				case 0:
+					// TODO debug spurious reads..
+					break;
+
+				case COUNTER:
+					ret = do_count(computational_fd_send, computational_fd_recv, mb, mb_oft, cur_len);
+					if (ret < 0) {
+						printf("Error occured while counting %s\n", strerror(ret));
+					}
+					break;
+
+				case POINTER_CHASE:
+					ret = do_pointer_chase(computational_fd_send, computational_fd_recv, mb, mb_oft, cur_len, qsg->as, &cur_addr, flash_read_delay);
+					if (ret < 0) {
+						printf("Error occured while counting %s\n", strerror(ret));
+					}
+					break;
+
+				default:
+					printf("warning: could not find compute type\n");
 			}
-			#endif
-			#ifdef POINTER_CHASING
-			ret = do_pointer_chase(computational_fd_send, computational_fd_recv, mb, mb_oft, cur_len, qsg->as, &cur_addr, flash_read_delay);
-			if (ret < 0) {
-				printf("Error occured while counting %s\n", strerror(ret));
-			}
-			#endif
 		}
 	}
 
