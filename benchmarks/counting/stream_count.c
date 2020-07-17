@@ -86,6 +86,15 @@ void computational_read(void *x, int enable)
 				printf("READ DONE: \n");
 			}
 		}
+		if(enable) {
+			// disable before leaving...
+			err = disable_computational_stream_directive(fd);
+			if (err<0){
+				fprintf(stderr, "enable computational stream directive status:%#x(%s)\n", errno, strerror(errno));
+			} else{
+				printf("enable computational stream directive successful\n");
+			}
+		}
 	}
 	close(fd);
 }
