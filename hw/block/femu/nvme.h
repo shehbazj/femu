@@ -686,6 +686,17 @@ enum NvmeDirectiveExists {
     NVME_DIR_IDF_STREAMS = 0x2,
 };
 
+/* Upto 31 compute values may be used.
+	set dword - 10:15 with one of the following
+	values.
+*/
+enum NvmeComputeDirectiveType {
+    NVME_DIR_COMPUTE_COUNTER = 0x1,
+    NVME_DIR_COMPUTE_POINTER_CHASE = 0x2,
+    NVME_DIR_COMPUTE_COMPRESS = 0x3,
+	// TODO add other compute operations here.
+};
+
 typedef struct NvmeDirId {
        uint8_t dir_support[32];
        uint8_t dir_enable[32];

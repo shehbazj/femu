@@ -808,6 +808,7 @@ static uint16_t nvme_dir_send(FemuCtrl *n, NvmeCmd *cmd)
     uint8_t  dtype  = DTYPE_FROM_DW11(dw11);
     uint8_t  doper  = DOPER_FROM_DW11(dw11);
     uint8_t  tdtype;
+	uint8_t	computetype;
     uint8_t  endir;
     NvmeNamespace *ns;
 
@@ -831,14 +832,37 @@ static uint16_t nvme_dir_send(FemuCtrl *n, NvmeCmd *cmd)
         switch (doper) {
         case NVME_DIR_SND_ID_OP_ENABLE:
             tdtype = (dw12 >> 8) & 0xFF;
+			computetype = (dw12 >> 10) & 0xFF;
             endir = dw12 & NVME_DIR_ENDIR;
-            femu_debug("%s, tdtype:%#x, endir:%#x\n", __func__, tdtype, endir);
+            femu_debug("%s, tdtype:%#x, compute_type:%#x, endir:%#x\n", __func__, tdtype, computetype, endir);
             if (tdtype == NVME_DIR_TYPE_STREAMS) {
                 if (endir)
                     ns->id_dir->dir_enable[0] |= NVME_DIR_IDF_STREAMS;
                 else
                     ns->id_dir->dir_enable[0] &= ~NVME_DIR_IDF_STREAMS;
             }
+			if (computetype == NVME_DIR_COMPUTE_COUNTER) {
+				printf("Compute type detected\n");
+				if (endir) {
+					printf("enable compute type\n");
+					ns->id_dir->dir_enable[1] = NVME_DIR_COMPUTE_COUNTER;
+				}else {
+					printf("disable compute type\n");
+					ns->id_dir->dir_enable[1] = 0;
+				}
+			}
+			if (computetype == NVME_DIR_COMPUTE_POINTER_CHASE) {
+				printf("Pointer type detected\n");
+				if (endir) {
+					printf("enable pointer chase type\n");
+					ns->id_dir->dir_enable[1] = NVME_DIR_COMPUTE_POINTER_CHASE;
+				}else {
+					printf("disable pointer type\n");
+					ns->id_dir->dir_enable[1] = 0;
+				}
+			}
+
+			// TODO add other compute operations here.
             break;
         default:
             return NVME_INVALID_FIELD;

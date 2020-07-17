@@ -19,6 +19,7 @@
 
 extern uint64_t iscos_counter;
 void computational_thread (void);
+extern int gzip_me(char *i, char *o, int mode);
 
 static void nvme_post_cqe(NvmeCQueue *cq, NvmeRequest *req)
 {
@@ -128,9 +129,7 @@ static void nvme_process_cq_cpl(void *arg, int index_poller)
     }
 }
 
-extern int gzip_me(char *i, char *o, int mode);
-
-void computational_thread (void)
+void computational_thread (FemuCtrl *n)
 {
 	printf("COMPUTATIONAL THREAD PID = %d\n", getpid());
 	int fd_get = open ("computational_pipe_send", 0666);
@@ -164,22 +163,37 @@ void computational_thread (void)
                         printf("error reading in child\n");
                         exit (1);
                 }
-		#ifdef COUNTING
-		counter = count_bits(buf);
-		#endif
-		#ifdef POINTER_CHASING
-		counter = get_disk_pointer(buf);
-		#endif
-		char *i = malloc(10);
-		char *o = malloc(10);
-		// XXX libgzip.so
-	//	counter = gzip_me(i, o, 1);
-		counter = (*func)(i, o, 1);
-		dlclose(myso);
-		// XXX
-		free(i);
-		free(o);
+		// TODO current implementation considers only single NVMe Namespace
+		// Change this to more namespaces later.
+		NvmeNamespace *ns = &n->namespaces[0];
+		uint8_t computetype = ns->id_dir->dir_enable[0];
 
+		switch (computetype) {
+			case NVME_DIR_COMPUTE_COUNTER:
+				counter = count_bits(buf);
+				break;
+			case NVME_DIR_COMPUTE_POINTER_CHASE:
+				counter = get_disk_pointer(buf);
+				break;
+			case NVME_DIR_COMPUTE_COMPRESSION:
+			case NVME_DIR_COMPUTE_DECOMPRESSION:
+				// do nothing here. writes go directly to 
+				// shared object.
+				/*
+				char *i = malloc(10);
+				char *o = malloc(10);
+				// XXX libgzip.so
+				//	counter = gzip_me(i, o, 1);
+				counter = (*func)(i, o, 1);
+				dlclose(myso);
+				// XXX
+				free(i);
+				free(o);
+				*/
+				break;
+			default:
+				printf("warning unknown computation type %d\n");
+		}
 //		printf("comp thread - waiting to write\n");
                 ret = write(fd_put, &counter, sizeof(counter));
 //		printf("written\n");
@@ -219,7 +233,7 @@ static void *nvme_poller(void *arg)
 		child_pid = fork();
 
 		if (child_pid == 0) {
-			computational_thread();
+			computational_thread(n);
 		}
 		else {
 			computational_fd_send = open("computational_pipe_send", O_RDWR);
@@ -376,6 +390,8 @@ static int femu_rw_mem_backend_nossd(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cm
     const uint8_t data_shift = ns->id_ns.lbaf[lba_index].ds;
     uint64_t data_size = (uint64_t)nlb << data_shift;
     uint64_t data_offset = slba << data_shift;
+
+	uint8_t computetype = ns->id_dir->dir_enable[1];
 
     hwaddr len = n->page_size;
     uint64_t iteration = data_size / len;
@@ -537,13 +553,15 @@ static uint16_t nvme_rw(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
 	}
     }
 
+	uint8_t computetype = ns->id_dir->dir_enable[1];
+
     req->slba = slba;
     req->meta_size = 0;
     req->status = NVME_SUCCESS;
     req->nlb = nlb;
     req->ns = ns;
 
-    ret = femu_rw_mem_backend_bb(&n->mbe, &req->qsg, data_offset, req->is_write, computational_fd_send, computational_fd_recv);
+    ret = femu_rw_mem_backend_bb(&n->mbe, &req->qsg, data_offset, req->is_write, computational_fd_send, computational_fd_recv, computetype);
     if (!ret) {
         return NVME_SUCCESS;
     }
