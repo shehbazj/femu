@@ -66,7 +66,6 @@ void stream_write(void *x)
 	}
 	close(fd);
 	return;
-
 }
 
 int nvme_dir_send(int fd, __u32 nsid, __u16 dspec, __u8 dtype, __u8 doper,

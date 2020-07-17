@@ -548,8 +548,6 @@ static uint16_t nvme_rw(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
 	}
     }
 
-	uint8_t computetype = ns->id_dir->dir_enable[1];
-
     req->slba = slba;
     req->meta_size = 0;
     req->status = NVME_SUCCESS;
