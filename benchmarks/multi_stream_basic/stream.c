@@ -65,7 +65,7 @@ void stream_write(void *x)
 
 	}
 	close(fd);
-	return NULL;
+	return;
 
 }
 
