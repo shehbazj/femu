@@ -13,7 +13,8 @@ nsc_pointer_reader: nsc_pointer_reader.c
 	gcc nsc_pointer_reader.c -o nsc_pointer_reader
 
 stream_pointer_reader: stream_pointer_reader.c
-	gcc -D_GNU_SOURCE stream_pointer_reader.c -o stream_pointer_reader
+	gcc -c ../stream_common/common.c -o common.o
+	gcc common.o stream_pointer_reader.c -o stream_pointer_reader
 
 clean:
 	rm -f pointer_generator write_pointer_to_disk host_pointer_reader nsc_pointer_reader stream_pointer_reader
