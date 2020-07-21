@@ -58,7 +58,7 @@ void computational_read(void *x)
 		/* stream id is persistent in the kernel for an open fd.
 		   If a normal write is intented while at a stream is open, it
 		   is suggested to write a stream_id of 0 before the write */ 
-		err = set_computational_stream_directive(fd, 0x801);
+		err = set_computational_stream_directive(fd, POINTER_CHASE_ENABLE);
 		if (err<0){
 			fprintf(stderr, "enable computational stream directive status:%#x(%s)\n", errno, strerror(errno));
 		}else{
@@ -94,7 +94,7 @@ void computational_read(void *x)
 		}
 		end_time = rdtsc();
 		// disable computation
-		err = set_computational_stream_directive(fd, 0x800);
+		err = set_computational_stream_directive(fd, POINTER_CHASE_DISABLE);
 		if (err<0){
 			fprintf(stderr, "enable computational stream directive status:%#x(%s)\n", errno, strerror(errno));
 		}else{

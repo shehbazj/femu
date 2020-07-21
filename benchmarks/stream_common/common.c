@@ -89,4 +89,16 @@ int alloc_stream_resources(int fd, unsigned int rsc_cnt)
 	return err;
 }
 
+int set_computational_stream_directive (int fd, uint32_t computation_type)
+{
+	__u32 result;
+	int err;
+	int nsid = nvme_get_nsid(fd);
+
+	printf("Set stream directive for nsid %d to %x\n", nsid, computation_type);
+	// dspec, dtype, doper, length, dw12, data, result
+	err = nvme_dir_send(fd, nsid, 0, 0, 1, 0, computation_type, NULL, &result);
+	return err;
+}
+
 #endif
