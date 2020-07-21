@@ -1,40 +1,4 @@
-#include <errno.h>
-#include <sys/ioctl.h>
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <unistd.h>
-#include <errno.h>
-#include <time.h>
-#include <pthread.h>
-#include <linux/nvme_ioctl.h>
-
-#define POSIX_FADV_STREAMID 8 
-#define IO_TRANSFER_SIZE (4*1024) 
-#define IO_ST_TRANSFER_SIZE (16*1024) 
-#define IO_SEGMENT_SIZE (IO_TRANSFER_SIZE * 8) 
-
-#define IO_OFFSET_ST 0x2000
-#define IO_OFFSET_NW 0xa000 
-
-#define nvme_admin_directive_send 0x19
-#define nvme_admin_directive_recv 0x1a
-
-//#define IO_OPEN_OPTIONS (O_RDWR | O_DIRECT | O_LARGEFILE)
-#define IO_OPEN_OPTIONS (O_RDWR | O_DIRECT | O_NONBLOCK | O_ASYNC)
-
-static unsigned long next;
-
-struct sdm {
-	char *fn;
-	unsigned int sid;
-	unsigned char *data_in;
-	unsigned char *data_out;
-};
+#include "common.h"
 
 /* RAND_MAX assumed to be 32767 */
 unsigned char myrand(void) {
@@ -57,7 +21,6 @@ void *normal_write(void *x)
 		/* stream id is persistent in the kernel for an open fd.
 		   If a normal write is intented while at a stream is open, it
 		   is suggested to write a stream_id of 0 before the write */ 
-		posix_fadvise(fd, 0, 0, POSIX_FADV_STREAMID);
 		err = pwrite(fd, f->data_in, IO_TRANSFER_SIZE, IO_OFFSET_NW); 
 		if (err<0)
 			fprintf(stderr, "nvme write from nw_thread status:%#x(%s) \n", errno, strerror(errno));
@@ -67,6 +30,8 @@ void *normal_write(void *x)
 			printf("nvme write from nw_thread successful on fd %d\n", fd);
 
 	}
+	// this is just for completeness, since the disk is opened using O_DIRECT flag, we dont need this.
+	fsync(fd);
 	close(fd);
 	return NULL;
 }
@@ -83,7 +48,6 @@ void *stream_write(void *x)
 	else {
 		int err;
 		printf("Opened fd from st_thread: %d\n", fd);
-		posix_fadvise(fd, f->sid, 0, POSIX_FADV_STREAMID);
 		err = pwrite(fd, f->data_in, IO_ST_TRANSFER_SIZE, IO_OFFSET_ST); 
 		if (err<0)
 			fprintf(stderr, "nvme write from st_thread status:%#x(%s) \n", errno, strerror(errno));
@@ -93,90 +57,11 @@ void *stream_write(void *x)
 			printf("nvme write from st_thread successful on fd %d\n", fd);
 
 	}
+	// this is just for completeness, since the disk is opened using O_DIRECT flag, we dont need this.
+	fsync(fd);
 	close(fd);
 	return NULL;
 
-}
-
-int nvme_dir_send(int fd, __u32 nsid, __u16 dspec, __u8 dtype, __u8 doper,
-                  __u32 data_len, __u32 dw12, void *data, __u32 *result)
-{
-        struct nvme_admin_cmd cmd = {
-                .opcode         = nvme_admin_directive_send,
-                .addr           = (__u64)(uintptr_t) data,
-                .data_len       = data_len,
-                .nsid           = nsid,
-                .cdw10          = data_len? (data_len >> 2) - 1 : 0,
-                .cdw11          = dspec << 16 | dtype << 8 | doper,
-                .cdw12          = dw12,
-        };
-        int err;
-
-        err = ioctl(fd, NVME_IOCTL_ADMIN_CMD, &cmd);
-        if (!err && result)
-                *result = cmd.result;
-        return err;
-}
-
-int nvme_dir_recv(int fd, __u32 nsid, __u16 dspec, __u8 dtype, __u8 doper,
-                  __u32 data_len, __u32 dw12, void *data, __u32 *result)
-{
-        struct nvme_admin_cmd cmd = {
-                .opcode         = nvme_admin_directive_recv,
-                .addr           = (__u64)(uintptr_t) data,
-                .data_len       = data_len,
-                .nsid           = nsid,
-                .cdw10          = data_len? (data_len >> 2) - 1 : 0,
-                .cdw11          = dspec << 16 | dtype << 8 | doper,
-                .cdw12          = dw12,
-        };
-        int err;
-
-        err = ioctl(fd, NVME_IOCTL_ADMIN_CMD, &cmd);
-        if (!err && result)
-                *result = cmd.result;
-        return err;
-}
-
-int nvme_get_nsid(int fd)
-{
-        static struct stat nvme_stat;
-        int err = fstat(fd, &nvme_stat);
-
-        if (err < 0)
-                return err;
-
-        if (!S_ISBLK(nvme_stat.st_mode)) {
-                fprintf(stderr,
-                        "Error: requesting namespace-id from non-block device\n");
-                exit(ENOTBLK);
-        }
-        return ioctl(fd, NVME_IOCTL_ID);
-}
-
-int enable_stream_directive(int fd)
-{
-	__u32 result;
-	int err;
-	int nsid = nvme_get_nsid(fd);
-
-	printf("Enable stream directive for nsid %d\n", nsid);
-	err = nvme_dir_send(fd, nsid, 0, 0, 1, 0, 0x101, NULL, &result);
-	return err;
-
-}
-
-int alloc_stream_resources(int fd, unsigned int rsc_cnt)
-{
-	__u32 result;
-	int err;
-	int nsid = nvme_get_nsid(fd);
-
-	printf("Allocate stream resource for nsid %d\n", nsid);
-	err = nvme_dir_recv(fd, nsid, 0, 1, 3, 0, rsc_cnt, NULL, &result);
-	if (err==0)
-		printf("  requested %d; returned %d\n", rsc_cnt, result & 0xffff);
-	return err;
 }
 
 int main(int argc, char **argv)
@@ -206,7 +91,7 @@ int main(int argc, char **argv)
 
 	perrstr = argv[1];
 	f.fn = argv[1];		
-	fd = open(argv[1], O_RDWR | O_DIRECT | O_LARGEFILE);
+	fd = open(argv[1], IO_OPEN_OPTIONS);
 	if (fd < 0)
 		goto perror;
 	printf("Opened fd from main: %d\n", fd);
@@ -225,19 +110,18 @@ int main(int argc, char **argv)
 
 	for (i=0; i<IO_SEGMENT_SIZE; i++)
 		f.data_in[i] = myrand();
-	f.sid = 1;
 	if(pthread_create(&st_thread, NULL, stream_write, &f)) {
 		fprintf(stderr, "Error creating stream write thread\n");
 		goto perror;
 	}
-
-	sleep(1); /* let the stream write to start first */
+	if(pthread_join(st_thread, NULL)) {
+		fprintf(stderr, "Error joining st_thread\n");
+	}
 
 	if(pthread_create(&nw_thread, NULL, normal_write, &f)) {
 		fprintf(stderr, "Error creating normal write thread\n");
 		goto perror;
 	}
-
 	if(pthread_join(nw_thread, NULL)) {
 		fprintf(stderr, "Error joining nw_thread\n");
 	}
@@ -268,10 +152,7 @@ int main(int argc, char **argv)
 		}
 	} 
 
-	if(pthread_join(st_thread, NULL)) {
-		fprintf(stderr, "Error joining st_thread\n");
-	}
-
+	
 	/* read */
 	err = pread(fd, f.data_out, IO_TRANSFER_SIZE, IO_OFFSET_ST); 
 	if (err<0)
