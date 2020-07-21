@@ -100,5 +100,4 @@ int set_computational_stream_directive (int fd, uint32_t computation_type)
 	err = nvme_dir_send(fd, nsid, 0, 0, 1, 0, computation_type, NULL, &result);
 	return err;
 }
-
 #endif
