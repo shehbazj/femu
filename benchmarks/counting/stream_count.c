@@ -17,9 +17,9 @@ void computational_read(void *x, int enable)
 		   If a normal write is intented while at a stream is open, it
 		   is suggested to write a stream_id of 0 before the write */ 
 		if (enable) {
-			err = enable_computational_stream_directive(fd);
+			err = set_computational_stream_directive(fd, 0x401);
 		} else {
-			err = disable_computational_stream_directive(fd);
+			err = set_computational_stream_directive(fd, 0x400);
 		}
 		if (err<0){
 			fprintf(stderr, "enable computational stream directive status:%#x(%s)\n", errno, strerror(errno));
