@@ -2,8 +2,7 @@
 #define DEBUG 1
 #include "common.h"
 
-int enable_computational_stream_directive (int fd);
-int disable_computational_stream_directive (int fd);
+int set_computational_stream_directive (int fd, uint32_t computation_type);
 
 /* RAND_MAX assumed to be 32767 */
 unsigned char myrand(void) {
@@ -59,7 +58,7 @@ void computational_read(void *x)
 		/* stream id is persistent in the kernel for an open fd.
 		   If a normal write is intented while at a stream is open, it
 		   is suggested to write a stream_id of 0 before the write */ 
-		err = enable_computational_stream_directive(fd);
+		err = set_computational_stream_directive(fd, 0x801);
 		if (err<0){
 			fprintf(stderr, "enable computational stream directive status:%#x(%s)\n", errno, strerror(errno));
 		}else{
@@ -94,7 +93,8 @@ void computational_read(void *x)
 		//	assert (next_block == END_BLOCK_MAGIC);
 		}
 		end_time = rdtsc();
-		err = disable_computational_stream_directive(fd);
+		// disable computation
+		err = set_computational_stream_directive(fd, 0x800);
 		if (err<0){
 			fprintf(stderr, "enable computational stream directive status:%#x(%s)\n", errno, strerror(errno));
 		}else{
@@ -116,31 +116,6 @@ void computational_read(void *x)
 /* 0x401 = 0b 0100 0000 0001 this enables counting (dw12 << 10 = 01)
    0x801 = 0b 1000 0000 0001 this enables pointer chase (dw12 << 10 = 02)
 */
-
-int enable_computational_stream_directive (int fd)
-{
-	__u32 result;
-	int err;
-	int nsid = nvme_get_nsid(fd);
-
-	printf("Enable stream directive for nsid %d\n", nsid);
-	// dspec, dtype, doper, length, dw12, data, result
-	err = nvme_dir_send(fd, nsid, 0, 0, 1, 0, 0x801, NULL, &result);
-	return err;
-}
-
-// disables pointer chase operation.
-int disable_computational_stream_directive (int fd)
-{
-	__u32 result;
-	int err;
-	int nsid = nvme_get_nsid(fd);
-
-	printf("Enable stream directive for nsid %d\n", nsid);
-	// dspec, dtype, doper, length, dw12, data, result
-	err = nvme_dir_send(fd, nsid, 0, 0, 1, 0, 0x800, NULL, &result);
-	return err;
-}
 
 int main(int argc, char **argv)
 {
