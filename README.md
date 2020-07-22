@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/shehbazj/femu.svg?branch=master)](https://travis-ci.com/shehbazj/femu)
+
 ```
   ______ ______ __  __ _    _ 
  |  ____|  ____|  \/  | |  | |
