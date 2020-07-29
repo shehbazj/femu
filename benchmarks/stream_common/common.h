@@ -39,8 +39,10 @@ struct sdm {
 	unsigned char *data_out;
 };
 
-/* 0x401 = 0b 0100 0000 0001 this enables counting (dw12 << 10 = 01)
-   0x801 = 0b 1000 0000 0001 this enables pointer chase (dw12 << 10 = 02)
+/* 
+	0b is for binary.
+   0x401 = 0b 0100 0000 0001 this enables counting (dw12 >> 10 = 01)
+   0x801 = 0b 1000 0000 0001 this enables pointer chase (dw12 >> 10 = 02)
 */
 enum ComputationalDirectiveType {
 	POINTER_CHASE_ENABLE  = 0x801,
