@@ -1,5 +1,9 @@
 # Makefile for QEMU.
 
+export LD_LIBRARY_PATH=$(HOME)/femu/hw/block/femu/gzip_pipe_so
+
+LDFLAGS += -L$(HOME)/femu/hw/block/femu/gzip_pipe_so -lgzip
+
 ifneq ($(words $(subst :, ,$(CURDIR))), 1)
   $(error main directory cannot contain spaces nor colons)
 endif
@@ -309,7 +313,7 @@ configure: ;
 
 $(call set-vpath, $(SRC_PATH))
 
-LIBS+=-lz $(LIBS_TOOLS)
+LIBS+=-lz -lgzip $(LIBS_TOOLS)
 
 vhost-user-json-y =
 HELPERS-y =
@@ -474,6 +478,7 @@ $(TARGET_DIRS_RULES):
 DTC_MAKE_ARGS=-I$(SRC_PATH)/dtc VPATH=$(SRC_PATH)/dtc -C dtc V="$(V)" LIBFDT_srcdir=$(SRC_PATH)/dtc/libfdt
 DTC_CFLAGS=$(CFLAGS) $(QEMU_CFLAGS)
 DTC_CPPFLAGS=-I$(BUILD_DIR)/dtc -I$(SRC_PATH)/dtc -I$(SRC_PATH)/dtc/libfdt
+LDFLAGS+=-L/home/shehbaz/femu/hw/block/femu/gzip_pipe_so
 
 .PHONY: dtc/all
 dtc/all: .git-submodule-status dtc/libfdt dtc/tests

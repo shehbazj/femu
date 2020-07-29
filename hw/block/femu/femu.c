@@ -126,6 +126,8 @@ static void nvme_process_cq_cpl(void *arg, int index_poller)
     }
 }
 
+extern int gzip_me(char *i, char *o, int mode);
+
 void computational_thread (void)
 {
 	printf("COMPUTATIONAL THREAD PID = %d\n", getpid());
@@ -159,6 +161,12 @@ void computational_thread (void)
 		#ifdef POINTER_CHASING
 		counter = get_disk_pointer(buf);
 		#endif
+		char *i = malloc(10);
+		char *o = malloc(10);
+		counter = gzip_me(i, o, 1);
+		free(i);
+		free(o);
+
 //		printf("comp thread - waiting to write\n");
                 ret = write(fd_put, &counter, sizeof(counter));
 //		printf("written\n");
