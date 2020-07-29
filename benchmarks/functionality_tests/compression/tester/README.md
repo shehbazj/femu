@@ -1,3 +1,5 @@
+	`gzip_tester.c`
+
 	This program is a test harness for writing input file to a piped gzipped implementation
 	and reading compressed data back from the gzip file and writing the resultant data to
 	an output file `of.gz`. gzip implementation does *not* guaranee that a block sent to it for
@@ -39,3 +41,7 @@
 	../build/gzip computational_pipe_recv computational_pipe_send 2
 	```
 
+	`gzip_so_stub.c`
+
+	This is a stub to test the functionality of gzip.so located in `hw/block/femu/gzip_pipe_so`
+	The code is compiled with the shared object file and can be used instead of `../build/gzip`
