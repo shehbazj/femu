@@ -100,6 +100,7 @@ int main(int argc, char **argv)
 
 	computational_read(&f, 1);
 
+//	testing if counting is disabled correctly.
 //	computational_read(&f, 0);
 
 
