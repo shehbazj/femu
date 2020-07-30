@@ -13,10 +13,9 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 #include "computation.h"
-#include "computation.c"
 
 void computational_thread (FemuCtrl *n);
-extern uint64_t ones_counter;
+uint64_t ones_counter;
 
 static void nvme_post_cqe(NvmeCQueue *cq, NvmeRequest *req)
 {

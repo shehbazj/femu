@@ -7,7 +7,6 @@
 #include "computation.h"
 #include "nvme.h"
 
-extern uint64_t iscos_counter;
 enum NvmeComputeDirectiveType;
 
 uint64_t do_pointer_chase(int computational_fd_send, int computational_fd_recv, void *mb, 
