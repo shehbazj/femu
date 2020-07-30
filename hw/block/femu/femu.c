@@ -184,7 +184,7 @@ void computational_thread (FemuCtrl *n)
 		// TODO current implementation considers only single NVMe Namespace
 		// Change this to more namespaces later.
 		NvmeNamespace *ns = &n->namespaces[0];
-		uint8_t computetype = ns->id_dir->dir_enable[0];
+		enum NvmeComputeDirectiveType computetype = ns->id_dir->dir_enable[0];
 		printf("%s():computetype %d\n", __func__, computetype);
 
 		switch (computetype) {
@@ -583,7 +583,7 @@ static uint16_t nvme_rw(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
 	}
     }
 
-	uint8_t computetype = ns->id_dir->dir_enable[1];
+	enum NvmeComputeDirectiveType computetype = ns->id_dir->dir_enable[1];
 
     req->slba = slba;
     req->meta_size = 0;
