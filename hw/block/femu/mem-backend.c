@@ -5,8 +5,10 @@
 
 #include "mem-backend.h"
 #include "computation.h"
+#include "nvme.h"
 
 extern uint64_t iscos_counter;
+enum NvmeComputeDirectiveType;
 
 uint64_t do_pointer_chase(int computational_fd_send, int computational_fd_recv, void *mb, 
 		uint64_t mb_oft, dma_addr_t cur_len, AddressSpace *as, dma_addr_t *cur_addr, uint32_t read_delay);
@@ -107,7 +109,7 @@ uint64_t do_count(int computational_fd_send, int computational_fd_recv, void *mb
 
 /* Coperd: directly read/write to memory backend from blackbox mode */
 int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
-        uint64_t data_offset, bool is_write, int computational_fd_send, int computational_fd_recv, uint8_t computetype)
+        uint64_t data_offset, bool is_write, int computational_fd_send, int computational_fd_recv, enum NvmeComputeDirectiveType computetype)
 {
     int sg_cur_index = 0;
     dma_addr_t sg_cur_byte = 0;
@@ -143,18 +145,18 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
 		// if (is_write) : Write Based computation, eg. compression. else:
 		if (!is_write && ((mb + mb_oft) != NULL) ) {
 			switch (computetype) {
-				case 0:
+				case NVME_DIR_COMPUTE_NONE:
 					// TODO debug spurious reads..
 					break;
 
-				case COUNTER:
+				case NVME_DIR_COMPUTE_COUNTER:
 					ret = do_count(computational_fd_send, computational_fd_recv, mb, mb_oft, cur_len);
 					if (ret < 0) {
 						printf("Error occured while counting %s\n", strerror(ret));
 					}
 					break;
 
-				case POINTER_CHASE:
+				case NVME_DIR_COMPUTE_POINTER_CHASE:
 					ret = do_pointer_chase(computational_fd_send, computational_fd_recv, mb, mb_oft, cur_len, qsg->as, &cur_addr, flash_read_delay);
 					if (ret < 0) {
 						printf("Error occured while counting %s\n", strerror(ret));

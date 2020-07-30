@@ -841,28 +841,14 @@ static uint16_t nvme_dir_send(FemuCtrl *n, NvmeCmd *cmd)
                 else
                     ns->id_dir->dir_enable[0] &= ~NVME_DIR_IDF_STREAMS;
             }
-			if (computetype == NVME_DIR_COMPUTE_COUNTER) {
-				printf("Compute type detected\n");
-				if (endir) {
-					printf("enable compute type\n");
-					ns->id_dir->dir_enable[1] = NVME_DIR_COMPUTE_COUNTER;
-				}else {
-					printf("disable compute type\n");
-					ns->id_dir->dir_enable[1] = 0;
-				}
+			if(endir) {
+				printf("enable compute type %d\n", computetype);
+				ns->id_dir->dir_enable[1] = computetype;
+			}else {
+				printf("disable previous compute type %d\n", ns->id_dir->dir_enable[1]);
+				ns->id_dir->dir_enable[1] = 0;
 			}
-			if (computetype == NVME_DIR_COMPUTE_POINTER_CHASE) {
-				printf("Pointer type detected\n");
-				if (endir) {
-					printf("enable pointer chase type\n");
-					ns->id_dir->dir_enable[1] = NVME_DIR_COMPUTE_POINTER_CHASE;
-				}else {
-					printf("disable pointer type\n");
-					ns->id_dir->dir_enable[1] = 0;
-				}
-			}
-
-			// TODO add other compute operations here.
+		// TODO add other compute operations here.
             break;
         default:
             return NVME_INVALID_FIELD;
