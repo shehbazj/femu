@@ -1,7 +1,5 @@
 #include "../stream_common/common.h"
 
-int set_computational_stream_directive (int fd, uint32_t computation_type);
-
 void computational_read(void *x, int enable)
 {
 	int fd;
@@ -22,6 +20,7 @@ void computational_read(void *x, int enable)
 			err = set_computational_stream_directive(fd, COUNTING_ENABLE);
 		} else {
 			err = set_computational_stream_directive(fd, COUNTING_DISABLE);
+			return;
 		}
 		if (err<0){
 			fprintf(stderr, "enable computational stream directive status:%#x(%s)\n", errno, strerror(errno));

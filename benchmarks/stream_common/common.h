@@ -61,5 +61,6 @@ int nvme_dir_recv(int fd, __u32 nsid, __u16 dspec, __u8 dtype, __u8 doper,
 int nvme_get_nsid(int fd);
 int enable_stream_directive(int fd);
 int alloc_stream_resources(int fd, unsigned int rsc_cnt);
+int set_computational_stream_directive (int fd, enum ComputationalDirectiveType computation_type);
 
 #endif

@@ -15,7 +15,7 @@
 #include "computation.h"
 #include "computation.c"
 
-extern uint64_t iscos_counter;
+extern uint64_t ones_counter;
 
 static void nvme_post_cqe(NvmeCQueue *cq, NvmeRequest *req)
 {
@@ -182,6 +182,8 @@ void computational_thread()
 				printf("warning unknown computation type %d\n");
 		}
 		printf("sending pointer value from compute %lu\n", counter);
+		ones_counter += counter;
+
 //		printf("comp thread - waiting to write\n");
                 ret = write(fd_put, &counter, sizeof(counter));
 //		printf("written\n");
@@ -278,7 +280,7 @@ static void *nvme_poller(void *arg)
             break;
 	}
 
-	printf("%s(): iscos_counter = %llu\n", __func__,iscos_counter);
+	printf("%s(): ones_counter = %llu\n", __func__,ones_counter);
 	return NULL;
 }
 
@@ -728,7 +730,7 @@ static void nvme_clear_ctrl(FemuCtrl *n, bool shutdown)
         femu_debug("disabling NVMe Controller ...\n");
     }
 
-	printf("%s():iscos_counter = %llu\n", __func__,iscos_counter);
+	printf("%s():ones_counter = %llu\n", __func__,ones_counter);
 
     if (shutdown) {
         femu_debug("%s,clear_guest_notifier\n", __func__);
