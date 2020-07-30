@@ -1,9 +1,5 @@
 # Makefile for QEMU.
 
-#export LD_LIBRARY_PATH=$(CURDIR)/hw/block/femu/gzip_pipe_so
-
-#LDFLAGS += -L$(CURDIR)/hw/block/femu/gzip_pipe_so -lgzip
-
 ifneq ($(words $(subst :, ,$(CURDIR))), 1)
   $(error main directory cannot contain spaces nor colons)
 endif
