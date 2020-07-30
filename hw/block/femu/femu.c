@@ -15,6 +15,8 @@
 #include "computation.h"
 #include "computation.c"
 
+#include <dlfcn.h>
+
 extern uint64_t iscos_counter;
 void computational_thread (void);
 
@@ -147,6 +149,13 @@ void computational_thread (void)
         int ret;
 	uint64_t counter;
 
+	typedef int (*some_func)(char *param, char *parm2 , int );
+
+	// XXX
+	void *myso = dlopen("/home/shehbaz/femu/hw/block/femu/gzip_pipe_so/libgzip.so", RTLD_NOW);
+	some_func *func = dlsym(myso, "gzip_me");
+	// XXX
+
         while (1)
         {
 //		printf("comp thread - waiting to read\n");
@@ -163,7 +172,11 @@ void computational_thread (void)
 		#endif
 		char *i = malloc(10);
 		char *o = malloc(10);
-		counter = gzip_me(i, o, 1);
+		// XXX libgzip.so
+	//	counter = gzip_me(i, o, 1);
+		counter = (*func)(i, o, 1);
+		dlclose(myso);
+		// XXX
 		free(i);
 		free(o);
 

@@ -12,7 +12,9 @@ common-obj-$(CONFIG_NVME_PCI) += nvme/nvme.o nvme/nvme-ns.o nvme/ocssd.o nvme/oc
 
 obj-$(CONFIG_FEMU_PCI) += femu/nvme-util.o
 obj-$(CONFIG_FEMU_PCI) += femu/nvme-core.o
-export LD_LIBRARY_PATH=/home/shehbaz/femu/hw/block/femu/gzip_pipe_so
+#export LD_LIBRARY_PATH=/home/shehbaz/femu/hw/block/femu/gzip_pipe_so
+LDFLAGS += -ldl
+LIBS += -ldl
 #LDFLAGS += -L/home/shehbaz/femu/hw/block/femu/gzip_pipe_so -lgzip
 obj-$(CONFIG_FEMU_PCI) += femu/femu.o
 obj-$(CONFIG_FEMU_PCI) += femu/ocssd/

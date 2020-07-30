@@ -2,6 +2,8 @@
 
 export LD_LIBRARY_PATH=$(HOME)/femu/hw/block/femu/gzip_pipe_so
 
+LIBS+= -ldl
+
 LDFLAGS += -L$(HOME)/femu/hw/block/femu/gzip_pipe_so -lgzip
 
 ifneq ($(words $(subst :, ,$(CURDIR))), 1)
@@ -313,7 +315,7 @@ configure: ;
 
 $(call set-vpath, $(SRC_PATH))
 
-LIBS+=-lz -lgzip $(LIBS_TOOLS)
+LIBS+=-lz $(LIBS_TOOLS)
 
 vhost-user-json-y =
 HELPERS-y =
