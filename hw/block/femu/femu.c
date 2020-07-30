@@ -13,7 +13,6 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 #include "computation.h"
-#include "computation.c"
 
 #include <dlfcn.h>
 
