@@ -8033,7 +8033,7 @@ preserve_env STRIP
 preserve_env WINDRES
 
 ## Now make gzip
-cd hw/block/femu/gzip_pipe_so/
+cd $source_path/hw/block/femu/gzip_pipe_so/
 make
 cd -
 
