@@ -2,8 +2,6 @@
 #define DEBUG 1
 #include "common.h"
 
-int set_computational_stream_directive (int fd, uint32_t computation_type);
-
 /* RAND_MAX assumed to be 32767 */
 unsigned char myrand(void) {
 	return (unsigned char)(0xAA);
