@@ -8032,6 +8032,11 @@ preserve_env SMBD
 preserve_env STRIP
 preserve_env WINDRES
 
+## Now make gzip
+cd hw/block/femu/gzip_pipe_so/
+make
+cd -
+
 printf "exec" >>config.status
 printf " '%s'" "$0" "$@" >>config.status
 echo ' "$@"' >>config.status

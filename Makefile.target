@@ -205,6 +205,7 @@ $(QEMU_PROG_BUILD): config-devices.mak
 endif
 
 COMMON_LDADDS = ../libqemuutil.a
+LIBS := -L$(BUILD_DIR)/hw/block/femu/gzip_pipe_so -lgzip  $(LIBS)
 
 # build either PROG or PROGW
 $(QEMU_PROG_BUILD): $(all-obj-y) $(COMMON_LDADDS)
