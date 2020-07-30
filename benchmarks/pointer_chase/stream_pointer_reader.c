@@ -131,6 +131,12 @@ void computational_read(void *x)
 		//	assert (next_block == END_BLOCK_MAGIC);
 		}
 		end_time = rdtsc();
+		err = disable_computational_stream_directive(fd);
+		if (err<0){
+			fprintf(stderr, "enable computational stream directive status:%#x(%s)\n", errno, strerror(errno));
+		}else{
+			printf("enable computational stream directive successful\n");
+		}
 	}
 
 	free(data);

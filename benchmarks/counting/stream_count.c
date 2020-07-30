@@ -73,7 +73,6 @@ void computational_read(void *x, int enable)
 			printf("enable computational stream directive successful\n");
 		}
 
-		posix_fadvise(fd, f->sid, 0, POSIX_FADV_STREAMID);
 		for (current_offset = IO_OFFSET_NW ; current_offset < MAX_FILE_OFFSET ; current_offset += IO_TRANSFER_SIZE) {
 			err = pread(fd, f->data_in, IO_TRANSFER_SIZE, current_offset); 
 			if (err<0) {
@@ -97,6 +96,7 @@ void computational_read(void *x, int enable)
 		}
 	}
 	close(fd);
+	return;
 }
 
 int nvme_dir_send(int fd, __u32 nsid, __u16 dspec, __u8 dtype, __u8 doper,
@@ -255,7 +255,8 @@ int main(int argc, char **argv)
 
 	computational_read(&f, 1);
 
-	computational_read(&f, 0);
+//	testing if counting is disabled correctly.
+//	computational_read(&f, 0);
 
 
    close(fd);
