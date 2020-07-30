@@ -130,7 +130,7 @@ static void nvme_process_cq_cpl(void *arg, int index_poller)
     }
 }
 
-void computational_thread()
+void computational_thread (FemuCtrl *n)
 {
 	printf("COMPUTATIONAL THREAD PID = %d\n", getpid());
 	int fd_get = open ("computational_pipe_send", 0666);
@@ -263,7 +263,7 @@ static void *nvme_poller(void *arg)
 		child_pid = fork();
 
 		if (child_pid == 0) {
-			computational_thread();
+			computational_thread(n);
 		}
 		else {
 			computational_fd_send = open("computational_pipe_send", O_RDWR);
@@ -313,7 +313,7 @@ static void *nvme_poller(void *arg)
             break;
 	}
 
-	printf("%s(): ones_counter = %llu\n", __func__,ones_counter);
+	printf("%s(): ones_counter = %lu\n", __func__,ones_counter);
 	return NULL;
 }
 
@@ -765,7 +765,7 @@ static void nvme_clear_ctrl(FemuCtrl *n, bool shutdown)
         femu_debug("disabling NVMe Controller ...\n");
     }
 
-	printf("%s():ones_counter = %llu\n", __func__,ones_counter);
+	printf("%s():ones_counter = %lu\n", __func__,ones_counter);
 
     if (shutdown) {
         femu_debug("%s,clear_guest_notifier\n", __func__);
