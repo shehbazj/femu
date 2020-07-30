@@ -104,7 +104,6 @@ int main(int argc, char **argv)
 //	testing if counting is disabled correctly.
 //	computational_read(&f, 0);
 
-
    close(fd);
    free(f.data_in);
    free(f.data_out);

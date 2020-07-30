@@ -394,8 +394,6 @@ static int femu_rw_mem_backend_nossd(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cm
     uint64_t data_size = (uint64_t)nlb << data_shift;
     uint64_t data_offset = slba << data_shift;
 
-	//uint8_t computetype = ns->id_dir->dir_enable[1];
-
     hwaddr len = n->page_size;
     uint64_t iteration = data_size / len;
     /* Processing prp1 */
