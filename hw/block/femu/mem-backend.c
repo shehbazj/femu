@@ -193,7 +193,6 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
 					break;
 
 				case POINTER_CHASE:
-					printf("%s(): call do pointer chase\n", __func__);
 					ret = do_pointer_chase(computational_fd_send, computational_fd_recv, mb, mb_oft, cur_len, qsg->as, &cur_addr, flash_read_delay);
 					if (ret < 0) {
 						printf("Error occured while counting %s\n", strerror(ret));

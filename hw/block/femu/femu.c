@@ -18,7 +18,7 @@
 #include <dlfcn.h>
 
 extern uint64_t ones_counter;
-void computational_thread (void);
+void computational_thread (FemuCtrl *n);
 extern int gzip_me(char *i, char *o, int mode);
 
 static void nvme_post_cqe(NvmeCQueue *cq, NvmeRequest *req)
@@ -129,7 +129,7 @@ static void nvme_process_cq_cpl(void *arg, int index_poller)
     }
 }
 
-void computational_thread()
+void computational_thread (FemuCtrl *n)
 {
 	printf("COMPUTATIONAL THREAD PID = %d\n", getpid());
 	int fd_get = open ("computational_pipe_send", 0666);
@@ -181,7 +181,12 @@ void computational_thread()
                         exit (1);
                 }
 
+		// TODO current implementation considers only single NVMe Namespace
+		// Change this to more namespaces later.
+		NvmeNamespace *ns = &n->namespaces[0];
+		uint8_t computetype = ns->id_dir->dir_enable[0];
 		printf("%s():computetype %d\n", __func__, computetype);
+
 		switch (computetype) {
 			case NVME_DIR_COMPUTE_COUNTER:
 				counter = count_bits(buf);
@@ -206,7 +211,7 @@ void computational_thread()
 				*/
 				break;
 			default:
-				printf("warning unknown computation type %d\n");
+				printf("warning unknown computation type %d\n", computetype);
 		}
 		printf("sending pointer value from compute %lu\n", counter);
 		ones_counter += counter;
@@ -258,7 +263,7 @@ static void *nvme_poller(void *arg)
 		child_pid = fork();
 
 		if (child_pid == 0) {
-			computational_thread();
+			computational_thread(n);
 		}
 		else {
 			computational_fd_send = open("computational_pipe_send", O_RDWR);
@@ -416,7 +421,7 @@ static int femu_rw_mem_backend_nossd(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cm
     uint64_t data_size = (uint64_t)nlb << data_shift;
     uint64_t data_offset = slba << data_shift;
 
-	uint8_t computetype = ns->id_dir->dir_enable[1];
+	//uint8_t computetype = ns->id_dir->dir_enable[1];
 
     hwaddr len = n->page_size;
     uint64_t iteration = data_size / len;
