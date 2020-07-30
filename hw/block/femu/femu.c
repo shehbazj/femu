@@ -129,7 +129,7 @@ static void nvme_process_cq_cpl(void *arg, int index_poller)
     }
 }
 
-void computational_thread (FemuCtrl *n)
+void computational_thread()
 {
 	printf("COMPUTATIONAL THREAD PID = %d\n", getpid());
 	int fd_get = open ("computational_pipe_send", 0666);
@@ -186,10 +186,10 @@ void computational_thread (FemuCtrl *n)
 		NvmeNamespace *ns = &n->namespaces[0];
 		enum NvmeComputeDirectiveType computetype = ns->id_dir->dir_enable[0];
 		printf("%s():computetype %d\n", __func__, computetype);
-
 		switch (computetype) {
 			case NVME_DIR_COMPUTE_COUNTER:
 				counter = count_bits(buf);
+				ones_counter += counter;
 				break;
 			case NVME_DIR_COMPUTE_POINTER_CHASE:
 				counter = get_disk_pointer(buf);
@@ -214,7 +214,6 @@ void computational_thread (FemuCtrl *n)
 				printf("warning unknown computation type %d\n", computetype);
 		}
 		printf("sending pointer value from compute %lu\n", counter);
-		ones_counter += counter;
 
 //		printf("comp thread - waiting to write\n");
                 ret = write(fd_put, &counter, sizeof(counter));
@@ -263,7 +262,7 @@ static void *nvme_poller(void *arg)
 		child_pid = fork();
 
 		if (child_pid == 0) {
-			computational_thread(n);
+			computational_thread();
 		}
 		else {
 			computational_fd_send = open("computational_pipe_send", O_RDWR);

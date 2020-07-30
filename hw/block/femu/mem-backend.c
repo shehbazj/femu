@@ -103,10 +103,12 @@ uint64_t do_pointer_chase(int computational_fd_send, int computational_fd_recv, 
 				printf("write on pipe failed %s\n", strerror(errno));
 			}
 			c = 0;
+
 			ret = read(computational_fd_recv, &c, sizeof(c));
 			if (ret < 0) {
 				printf("read from pipe failed %s\n", strerror(errno));
 			}
+
 			printf("next block_pointer %lu\n", c);
 		}else {
 			return c;

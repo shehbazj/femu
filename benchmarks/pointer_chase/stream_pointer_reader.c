@@ -2,13 +2,6 @@
 #define DEBUG 1
 #include "common.h"
 
-/* RAND_MAX assumed to be 32767 */
-unsigned char myrand(void) {
-	return (unsigned char)(0xAA);
-//    next = next * 1103515245 + 12345;
-//    return((unsigned)(next/65536) % 32768) & 0xFF;
-}
-
 void computational_read(void *x)
 {
 	int fd;
