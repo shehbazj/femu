@@ -64,7 +64,7 @@ uint64_t do_pointer_chase(int computational_fd_send, int computational_fd_recv, 
 		printf("error opening computational fd\n");
 	}
 
-	uint8_t computetype = POINTER_CHASE;
+	uint8_t computetype = NVME_DIR_COMPUTE_POINTER_CHASE;
 	ret = write(ctype_fd, &computetype , 1);
 	if (ret < 0) {
 		printf("write on pipe failed %s\n", strerror(errno));
@@ -125,7 +125,7 @@ uint64_t do_count(int computational_fd_send, int computational_fd_recv, void *mb
 		exit(1);
 	}
 
-	uint8_t computetype = COUNTER;
+	uint8_t computetype = NVME_DIR_COMPUTE_COUNTER;
 	int ret = write(ctype_fd, &computetype , 1);
 	if (ret < 0) {
 		printf("write on pipe failed %s\n", strerror(errno));
