@@ -19,7 +19,6 @@
 extern uint64_t ones_counter;
 void computational_thread (FemuCtrl *n);
 extern int gzip_me(char *i, char *o, int mode);
-extern uint64_t ones_counter;
 
 static void nvme_post_cqe(NvmeCQueue *cq, NvmeRequest *req)
 {
