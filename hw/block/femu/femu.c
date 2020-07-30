@@ -16,8 +16,8 @@
 
 #include <dlfcn.h>
 
-extern uint64_t ones_counter;
-void computational_thread (FemuCtrl *n);
+uint64_t ones_counter;
+void computational_thread (void);
 extern int gzip_me(char *i, char *o, int mode);
 
 static void nvme_post_cqe(NvmeCQueue *cq, NvmeRequest *req)
@@ -128,9 +128,25 @@ static void nvme_process_cq_cpl(void *arg, int index_poller)
     }
 }
 
-void computational_thread (FemuCtrl *n)
+void computational_thread (void)
 {
+	char buf[4096];
+        int ret;
+	uint64_t counter;
+	uint8_t computetype = 0;
+	typedef int (*some_func)(char *param, char *parm2 , int x);
+	void *myso = dlopen("/home/shehbaz/femu/hw/block/femu/gzip_pipe_so/libgzip.so", RTLD_NOW);
+	some_func *func = dlsym(myso, "gzip_me");
+	char *i,*o;
+
 	printf("COMPUTATIONAL THREAD PID = %d\n", getpid());
+
+	int fd_ctype = open ("ctype_pipe", 0666);
+	if (fd_ctype < 0) {
+		perror("Opening ctype pipe Failed\n");
+		exit(1);
+	}
+
 	int fd_get = open ("computational_pipe_send", 0666);
 	if (fd_get < 0) {
 		perror("Opening send pipe Failed\n");
@@ -142,28 +158,10 @@ void computational_thread (FemuCtrl *n)
 		perror("Opening send pipe Failed\n");
 		exit (1);
 	}
-
-	int fd_ctype = open ("ctype_pipe", 0666);
-	if (fd_ctype < 0) {
-		perror("Opening ctype pipe Failed\n");
-		exit(1);
-	}
-
-	char buf[4096];
-        int ret;
-	uint64_t counter;
-	uint8_t computetype = 0;
-
-	typedef int (*some_func)(char *param, char *parm2 , int );
-
-	// XXX
-	void *myso = dlopen("/home/shehbaz/femu/hw/block/femu/gzip_pipe_so/libgzip.so", RTLD_NOW);
-	some_func *func = dlsym(myso, "gzip_me");
-	// XXX
-
+	
         while (1)
         {
-//		printf("comp thread - waiting to read\n");
+		printf("comp thread - waiting to read\n");
 
 		// TODO Change this to select() where both ctype and fd_get can be
 		// monitored simultaneously.
@@ -174,40 +172,43 @@ void computational_thread (FemuCtrl *n)
 			exit(1);
 		}
 
-                ret = read(fd_get, buf, 4096);
-                if (ret < 0) {
-                        printf("error reading in child\n");
-                        exit (1);
-                }
-
-		// TODO current implementation considers only single NVMe Namespace
-		// Change this to more namespaces later.
-		NvmeNamespace *ns = &n->namespaces[0];
-		enum NvmeComputeDirectiveType computetype = ns->id_dir->dir_enable[0];
-		printf("%s():computetype %d\n", __func__, computetype);
 		switch (computetype) {
 			case NVME_DIR_COMPUTE_COUNTER:
+			        ret = read(fd_get, buf, 4096);
+		                if (ret < 0) {
+                		        printf("error reading in child\n");
+		                        exit (1);
+		                }
 				counter = count_bits(buf);
 				ones_counter += counter;
+                		ret = write(fd_put, &counter, sizeof(counter));
 				break;
 			case NVME_DIR_COMPUTE_POINTER_CHASE:
+				ret = read(fd_get, buf, 4096);
+		                if (ret < 0) {
+                		        printf("error reading in child\n");
+		                        exit (1);
+		                }
 				counter = get_disk_pointer(buf);
+                		ret = write(fd_put, &counter, sizeof(counter));
 				break;
 			case NVME_DIR_COMPUTE_COMPRESSION:
 			case NVME_DIR_COMPUTE_DECOMPRESSION:
+
 				// do nothing here. writes go directly to 
 				// shared object.
-				/*
-				char *i = malloc(10);
-				char *o = malloc(10);
+				i = malloc(10);
+				o = malloc(10);
 				// XXX libgzip.so
 				//	counter = gzip_me(i, o, 1);
 				counter = (*func)(i, o, 1);
+	//			(*func)(fd_get, fd_put, computetype);
+				(*func)(i, o, computetype);
 				dlclose(myso);
 				// XXX
 				free(i);
 				free(o);
-				*/
+
 				break;
 			default:
 				printf("warning unknown computation type %d\n", computetype);
@@ -215,7 +216,6 @@ void computational_thread (FemuCtrl *n)
 		printf("sending pointer value from compute %lu\n", counter);
 
 //		printf("comp thread - waiting to write\n");
-                ret = write(fd_put, &counter, sizeof(counter));
 //		printf("written\n");
         }
 	return;
@@ -261,7 +261,7 @@ static void *nvme_poller(void *arg)
 		child_pid = fork();
 
 		if (child_pid == 0) {
-			computational_thread(n);
+			computational_thread();
 		}
 		else {
 			computational_fd_send = open("computational_pipe_send", O_RDWR);
