@@ -126,7 +126,7 @@ static void nvme_process_cq_cpl(void *arg, int index_poller)
     }
 }
 
-void computational_thread (FemuCtrl *n)
+void computational_thread()
 {
 	printf("COMPUTATIONAL THREAD PID = %d\n", getpid());
 	int fd_get = open ("computational_pipe_send", 0666);
@@ -141,13 +141,30 @@ void computational_thread (FemuCtrl *n)
 		exit (1);
 	}
 
+	int fd_ctype = open ("ctype_pipe", 0666);
+	if (fd_ctype < 0) {
+		perror("Opening ctype pipe Failed\n");
+		exit(1);
+	}
+
 	char buf[4096];
         int ret;
 	uint64_t counter;
+	uint8_t computetype = 0;
 
         while (1)
         {
 //		printf("comp thread - waiting to read\n");
+
+		// TODO Change this to select() where both ctype and fd_get can be
+		// monitored simultaneously.
+
+		ret = read(fd_ctype, &computetype, 1);
+		if (ret < 0) {
+			printf("error reading computation type\n");
+			exit(1);
+		}
+
                 ret = read(fd_get, buf, 4096);
                 if (ret < 0) {
                         printf("error reading in child\n");
@@ -158,6 +175,7 @@ void computational_thread (FemuCtrl *n)
 		NvmeNamespace *ns = &n->namespaces[0];
 		enum NvmeComputeDirectiveType computetype = ns->id_dir->dir_enable[0];
 
+		printf("%s():computetype %d\n", __func__, computetype);
 		switch (computetype) {
 			case NVME_DIR_COMPUTE_COUNTER:
 				counter = count_bits(buf);
@@ -168,6 +186,7 @@ void computational_thread (FemuCtrl *n)
 			default:
 				printf("warning unknown computation type %d\n", computetype);
 		}
+		printf("sending pointer value from compute %lu\n", counter);
 //		printf("comp thread - waiting to write\n");
                 ret = write(fd_put, &counter, sizeof(counter));
 //		printf("written\n");
@@ -187,6 +206,7 @@ static void *nvme_poller(void *arg)
 
 	unlink("computational_pipe_send");
 	unlink("computational_pipe_recv");
+	unlink("ctype_pipe");
 
 	int ret = mkfifo("computational_pipe_send", 0666);
 	if (ret < 0 ) {
@@ -202,12 +222,19 @@ static void *nvme_poller(void *arg)
 		printf("Pipe Created\n");
 	}
 
+	ret = mkfifo("ctype_pipe", 0666);
+	if (ret < 0 ) {
+		printf("Creating computation type Pipe failed\n");
+	}else {
+		printf("Computation Pipe Created\n");
+	}
+
 	if (n->computation_mode == FEMU_COMPUTE_ON) {
 		printf("forking Computational Process...\n");
 		child_pid = fork();
 
 		if (child_pid == 0) {
-			computational_thread(n);
+			computational_thread();
 		}
 		else {
 			computational_fd_send = open("computational_pipe_send", O_RDWR);

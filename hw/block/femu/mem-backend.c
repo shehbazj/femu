@@ -51,20 +51,38 @@ inline static void add_delay(uint32_t micro_seconds) {
 	while( cpu_get_host_ticks()  < req_time);
 }
 
-uint64_t do_pointer_chase(int computational_fd_send, int computational_fd_recv, void *mb, uint64_t mb_oft, dma_addr_t cur_len, AddressSpace *as, dma_addr_t *cur_addr, uint32_t read_delay)
+uint64_t do_pointer_chase(int computational_fd_send, int computational_fd_recv, void *mb, uint64_t mb_oft, 
+	dma_addr_t cur_len, AddressSpace *as, dma_addr_t *cur_addr, uint32_t read_delay)
 {
 	uint64_t new_offset = mb_oft;
 	uint64_t c;
+	int ret;
 	DMADirection dir = DMA_DIRECTION_FROM_DEVICE;
 
-	int ret = write(computational_fd_send, mb + new_offset, 4096);
+	int ctype_fd = open("ctype_pipe", O_RDWR);
+	if (ctype_fd < 0) {
+		printf("error opening computational fd\n");
+	}
+
+	uint8_t computetype = POINTER_CHASE;
+	ret = write(ctype_fd, &computetype , 1);
+	if (ret < 0) {
+		printf("write on pipe failed %s\n", strerror(errno));
+		exit(1);
+	}
+
+	printf("new_offset = %lu\n", new_offset);
+	ret = write(computational_fd_send, mb + new_offset, 4096);
 	if ( ret < 0) {
 		printf("write on pipe failed %s\n", strerror(errno));
+		exit(1);
 	}
 	c = 0;
 	ret = read(computational_fd_recv, &c, sizeof(c));
+	printf("received new block number = %lu\n", new_offset);
 	if (ret < 0) {
 		printf("read from pipe failed %s\n", strerror(errno));	
+		exit(1);
 	}
 
 	while (c != 0 && c!= END_BLOCK_MAGIC)
@@ -75,15 +93,22 @@ uint64_t do_pointer_chase(int computational_fd_send, int computational_fd_recv, 
 			if (dma_memory_rw(as, *cur_addr, mb + new_offset, cur_len, dir)) {
 				error_report("FEMU: dma_memory_rw error");
 			}
-			int ret = write(computational_fd_send, mb + new_offset, 4096);
+			ret = write(ctype_fd, &computetype , 1);
+			if (ret < 0) {
+				printf("write on pipe failed %s\n", strerror(errno));
+				exit(1);
+			}
+			ret = write(computational_fd_send, mb + new_offset, 4096);
 			if ( ret < 0) {
 				printf("write on pipe failed %s\n", strerror(errno));
 			}
 			c = 0;
+
 			ret = read(computational_fd_recv, &c, sizeof(c));
 			if (ret < 0) {
 				printf("read from pipe failed %s\n", strerror(errno));
 			}
+
 			printf("next block_pointer %lu\n", c);
 		}else {
 			return c;
@@ -94,14 +119,29 @@ uint64_t do_pointer_chase(int computational_fd_send, int computational_fd_recv, 
 
 uint64_t do_count(int computational_fd_send, int computational_fd_recv, void *mb , uint64_t mb_oft, dma_addr_t cur_len)
 {
-	int ret = write(computational_fd_send, mb + mb_oft , cur_len);
+	int ctype_fd = open("ctype_pipe", O_RDWR);
+	if (ctype_fd < 0) {
+		printf("error opening computational fd\n");
+		exit(1);
+	}
+
+	uint8_t computetype = COUNTER;
+	int ret = write(ctype_fd, &computetype , 1);
+	if (ret < 0) {
+		printf("write on pipe failed %s\n", strerror(errno));
+		exit(1);
+	}
+
+	ret = write(computational_fd_send, mb + mb_oft , cur_len);
 	if (ret < 0 ) {
 		printf("write on pipe failed %s\n", strerror(errno));
+		exit(1);
 	}
 	uint64_t c=0;
 	ret = read(computational_fd_recv, &c, sizeof(c));
 	if (ret < 0) {
 		printf("read from pipe failed %s\n", strerror(errno));
+		exit(1);
 	}
 	printf("number of bytes in current block %lu\n", c);
 	return c;
