@@ -76,6 +76,9 @@ void computational_read(void *x)
 				printf("Error: could not seek %s\n", strerror(errno));
 				exit (1);
 			}
+			// the read is issued with fd pointed at head, it would call pointer chase 
+			// which would eventually return the tail corresponding to the head that
+			// would get stored in data buffer.
 			err = read(fd, data, IO_TRANSFER_SIZE); 
 			if (err<0) {
 				fprintf(stderr, "nvme write from nw_thread status:%#x(%s) \n", errno, strerror(errno));
