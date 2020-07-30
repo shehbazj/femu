@@ -691,6 +691,7 @@ enum NvmeDirectiveExists {
 	values.
 */
 enum NvmeComputeDirectiveType {
+	NVME_DIR_COMPUTE_NONE	= 0x0,
     NVME_DIR_COMPUTE_COUNTER = 0x1,
     NVME_DIR_COMPUTE_POINTER_CHASE = 0x2,
     NVME_DIR_COMPUTE_COMPRESSION = 0x3,
