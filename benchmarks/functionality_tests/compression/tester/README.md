@@ -30,6 +30,8 @@
 
 	Eg. Test Run:
 
+	`export LD_LIBRARY_PATH=/home/shehbaz/femu/hw/block/femu/gzip_pipe_so`
+
 	1. For compression:
 	```
 	./gzip_tester inputfile 1	
