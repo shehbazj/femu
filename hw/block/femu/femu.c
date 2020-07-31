@@ -13,11 +13,12 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 #include "computation.h"
+#include <poll.h>
 
 #include <dlfcn.h>
 
 uint64_t ones_counter;
-void computational_thread (void);
+void computational_process (void);
 extern int gzip_me(char *i, char *o, int mode);
 
 static void nvme_post_cqe(NvmeCQueue *cq, NvmeRequest *req)
@@ -128,16 +129,26 @@ static void nvme_process_cq_cpl(void *arg, int index_poller)
     }
 }
 
-void computational_thread (void)
+bool isCompression(enum NvmeComputeDirectiveType c)
+{
+	return (c == NVME_DIR_COMPUTE_DECOMPRESSION || c == NVME_DIR_COMPUTE_COMPRESSION);
+}
+
+void computational_process (void)
 {
 	char buf[4096];
         int ret;
 	uint64_t counter;
-	uint8_t computetype = 0;
-	typedef int (*some_func)(char *param, char *parm2 , int x);
-	void *myso = dlopen("/home/shehbaz/femu/hw/block/femu/gzip_pipe_so/libgzip.so", RTLD_NOW);
-	some_func *func = dlsym(myso, "gzip_me");
-	char *i,*o;
+	enum NvmeComputeDirectiveType computetype = NVME_DIR_COMPUTE_NONE;
+	struct pollfd fds[2];
+        memset(fds, 0 , sizeof(fds));
+
+        struct timespec t;
+        t.tv_sec = 0;
+        t.tv_nsec = 1;
+        sigset_t origmask;
+
+	int rc;
 
 	printf("COMPUTATIONAL THREAD PID = %d\n", getpid());
 
@@ -146,7 +157,7 @@ void computational_thread (void)
 		perror("Opening ctype pipe Failed\n");
 		exit(1);
 	}
-
+	
 	int fd_get = open ("computational_pipe_send", 0666);
 	if (fd_get < 0) {
 		perror("Opening send pipe Failed\n");
@@ -158,65 +169,81 @@ void computational_thread (void)
 		perror("Opening send pipe Failed\n");
 		exit (1);
 	}
-	
+
+        fds[0].fd = fd_ctype;
+        fds[0].events = POLLIN;
+
+	fds[1].fd = fd_get;
+	fds[1].events = POLLIN;
+
         while (1)
         {
+                rc = ppoll (fds, 1, &t, &origmask);
+                if (rc < 0) {
+                        perror( "poll failed");
+                        exit(1);
+                }
+
+                if (rc == 0) {
+                //        printf("poll timed out\n");
+                        continue;
+                }
+
+		if (fds[0].revents == POLLIN) {
+                        if (fds[0].fd == fd_ctype) {
+				ret = read(fd_ctype, &computetype, 1);
+				if (ret < 0) {
+					printf("error reading computation type\n");
+					exit(1);
+				}
+			}
+		}
+		if(fds[1].revents == POLLIN) {
+			if (fds[1].fd == fd_get) {
+				switch (computetype) {
+					case NVME_DIR_COMPUTE_NONE:
+						break;
+
+					case NVME_DIR_COMPUTE_COUNTER:
+					        ret = read(fd_get, buf, 4096);
+				                if (ret < 0) {
+                				        printf("error reading in child\n");
+				                        exit (1);
+				                }
+						counter = count_bits(buf);
+						ones_counter += counter;
+                				ret = write(fd_put, &counter, sizeof(counter));
+						break;
+
+					case NVME_DIR_COMPUTE_POINTER_CHASE:
+						ret = read(fd_get, buf, 4096);
+				                if (ret < 0) {
+                				        printf("error reading in child\n");
+				                        exit (1);
+				                }
+						counter = get_disk_pointer(buf);
+                				ret = write(fd_put, &counter, sizeof(counter));
+						break;
+
+					case NVME_DIR_COMPUTE_COMPRESSION:
+					case NVME_DIR_COMPUTE_DECOMPRESSION:
+						// do nothing here. writes go directly to shared object.
+						// the process blocks until compression fd is closed and
+						// returned.
+						// gzip_me(recv pipe, send pipe and mode) where mode is 1 - compress, 2 - decompress.
+						init_gzip(computetype - NVME_DIR_COMPUTE_COMPRESSION + 1);
+						break;
+					
+					case NVME_DIR_COMPUTE_END:
+						return;
+
+					default:
+						printf("warning unknown computation type %d\n", computetype);
+
+				}
+			}
+		}
 		printf("comp thread - waiting to read\n");
-
-		// TODO Change this to select() where both ctype and fd_get can be
-		// monitored simultaneously.
-
-		ret = read(fd_ctype, &computetype, 1);
-		if (ret < 0) {
-			printf("error reading computation type\n");
-			exit(1);
-		}
-
-		switch (computetype) {
-			case NVME_DIR_COMPUTE_COUNTER:
-			        ret = read(fd_get, buf, 4096);
-		                if (ret < 0) {
-                		        printf("error reading in child\n");
-		                        exit (1);
-		                }
-				counter = count_bits(buf);
-				ones_counter += counter;
-                		ret = write(fd_put, &counter, sizeof(counter));
-				break;
-			case NVME_DIR_COMPUTE_POINTER_CHASE:
-				ret = read(fd_get, buf, 4096);
-		                if (ret < 0) {
-                		        printf("error reading in child\n");
-		                        exit (1);
-		                }
-				counter = get_disk_pointer(buf);
-                		ret = write(fd_put, &counter, sizeof(counter));
-				break;
-			case NVME_DIR_COMPUTE_COMPRESSION:
-			case NVME_DIR_COMPUTE_DECOMPRESSION:
-
-				// do nothing here. writes go directly to 
-				// shared object.
-				i = malloc(10);
-				o = malloc(10);
-				// XXX libgzip.so
-				//	counter = gzip_me(i, o, 1);
-				counter = (*func)(i, o, 1);
-	//			(*func)(fd_get, fd_put, computetype);
-				(*func)(i, o, computetype);
-				dlclose(myso);
-				// XXX
-				free(i);
-				free(o);
-
-				break;
-			default:
-				printf("warning unknown computation type %d\n", computetype);
-		}
-		printf("sending pointer value from compute %lu\n", counter);
-
-//		printf("comp thread - waiting to write\n");
-//		printf("written\n");
         }
 	return;
 }
@@ -228,6 +255,7 @@ static void *nvme_poller(void *arg)
 
 	int computational_fd_send = 0;
 	int computational_fd_recv = 0;
+	int ctype_fd = 0;
 
 	pid_t child_pid;
 
@@ -261,16 +289,23 @@ static void *nvme_poller(void *arg)
 		child_pid = fork();
 
 		if (child_pid == 0) {
-			computational_thread();
+			computational_process();
 		}
 		else {
 			computational_fd_send = open("computational_pipe_send", O_RDWR);
 			if (computational_fd_send < 0) {
 				printf("error opening computational_fd \n");
+				exit(1);
 			}
 			computational_fd_recv = open("computational_pipe_recv", O_RDWR);
 			if (computational_fd_recv < 0) {
 				printf("error opening computational_fd \n");
+				exit(1);
+			}
+			ctype_fd = open("ctype_pipe", O_RDWR);
+			if (ctype_fd < 0) {
+				printf("error opening computational pipe \n");
+				exit(1);
 			}
 		}
 	}
@@ -286,7 +321,7 @@ static void *nvme_poller(void *arg)
                 NvmeSQueue *sq = n->sq[index];
                 NvmeCQueue *cq = n->cq[index];
                 if (sq && sq->is_active && cq && cq->is_active) {
-                    nvme_process_sq_io(sq, index, computational_fd_send, computational_fd_recv);
+                    nvme_process_sq_io(sq, index, computational_fd_send, computational_fd_recv, ctype_fd);
                 }
                 nvme_process_cq_cpl(n, index);
             }
@@ -303,7 +338,7 @@ static void *nvme_poller(void *arg)
                     NvmeSQueue *sq = n->sq[i];
                     NvmeCQueue *cq = n->cq[i];
                     if (sq && sq->is_active && cq && cq->is_active) {
-                        nvme_process_sq_io(sq, index, computational_fd_send, computational_fd_recv);
+                        nvme_process_sq_io(sq, index, computational_fd_send, computational_fd_recv, ctype_fd);
                     }
                 }
                 nvme_process_cq_cpl(n, index);
@@ -311,7 +346,15 @@ static void *nvme_poller(void *arg)
             break;
 	}
 
-	printf("%s(): ones_counter = %lu\n", __func__,ones_counter);
+	enum NvmeComputeDirectiveType end = NVME_DIR_COMPUTE_END;
+
+	printf("END Computational process\n");
+	ret = write(ctype_fd, &end, sizeof(enum NvmeComputeDirectiveType));
+	if (ret < 0) {
+		printf("Could end computational process\n");
+	}
+
+//	printf("%s(): ones_counter = %lu\n", __func__,ones_counter);
 	return NULL;
 }
 
@@ -533,7 +576,7 @@ void nvme_update_str_stat(FemuCtrl *n, NvmeNamespace *ns, uint16_t dspec)
 }
 
 static uint16_t nvme_rw(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
-    NvmeRequest *req, int computational_fd_send, int computational_fd_recv)
+    NvmeRequest *req, int computational_fd_send, int computational_fd_recv, int ctype_fd)
 {
     NvmeRwCmd *rw = (NvmeRwCmd *)cmd;
     uint16_t ctrl = le16_to_cpu(rw->control);
@@ -589,7 +632,7 @@ static uint16_t nvme_rw(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     req->nlb = nlb;
     req->ns = ns;
 
-    ret = femu_rw_mem_backend_bb(&n->mbe, &req->qsg, data_offset, req->is_write, computational_fd_send, computational_fd_recv, computetype);
+    ret = femu_rw_mem_backend_bb(&n->mbe, &req->qsg, data_offset, req->is_write, computational_fd_send, computational_fd_recv, ctype_fd, computetype);
     if (!ret) {
         return NVME_SUCCESS;
     }
@@ -597,7 +640,7 @@ static uint16_t nvme_rw(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     return NVME_DNR;
 }
 
-static uint16_t nvme_io_cmd(FemuCtrl *n, NvmeCmd *cmd, NvmeRequest *req, int computational_fd_send, int computational_fd_recv)
+static uint16_t nvme_io_cmd(FemuCtrl *n, NvmeCmd *cmd, NvmeRequest *req, int computational_fd_send, int computational_fd_recv, int ctype_fd)
 {
     NvmeNamespace *ns;
     uint32_t nsid = le32_to_cpu(cmd->nsid);
@@ -612,7 +655,7 @@ static uint16_t nvme_io_cmd(FemuCtrl *n, NvmeCmd *cmd, NvmeRequest *req, int com
     case NVME_CMD_READ:
     case NVME_CMD_WRITE:
         if (n->femu_mode == FEMU_BLACKBOX_MODE) {
-            	return nvme_rw(n, ns, cmd, req, computational_fd_send, computational_fd_recv);
+            	return nvme_rw(n, ns, cmd, req, computational_fd_send, computational_fd_recv, ctype_fd);
 	}
         else {
             	return femu_rw_mem_backend_nossd(n, ns, cmd);
@@ -694,7 +737,7 @@ static inline void nvme_copy_cmd(NvmeCmd *dst, NvmeCmd *src)
 #endif
 }
 
-void nvme_process_sq_io(void *opaque, int index_poller, int computational_fd_send, int computational_fd_recv)
+void nvme_process_sq_io(void *opaque, int index_poller, int computational_fd_send, int computational_fd_recv, int ctype_fd)
 {
     NvmeSQueue *sq = opaque;
     FemuCtrl *n = sq->ctrl;
@@ -731,7 +774,7 @@ void nvme_process_sq_io(void *opaque, int index_poller, int computational_fd_sen
         /* Coperd: For TIFA */
         req->tifa_cmd_flag = ((NvmeRwCmd *)&cmd)->rsvd2;
 
-        status = nvme_io_cmd(n, &cmd, req, computational_fd_send, computational_fd_recv);
+        status = nvme_io_cmd(n, &cmd, req, computational_fd_send, computational_fd_recv, ctype_fd);
         if (1 || status == NVME_SUCCESS) {
             req->status = status;
 

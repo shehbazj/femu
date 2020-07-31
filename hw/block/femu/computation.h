@@ -13,5 +13,6 @@
 
 uint64_t count_bits(char *buf);
 uint64_t get_disk_pointer(char *buf);
+void init_gzip(int);
 
 #endif

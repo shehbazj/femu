@@ -696,8 +696,12 @@ enum NvmeComputeDirectiveType {
     NVME_DIR_COMPUTE_POINTER_CHASE = 0x2,
     NVME_DIR_COMPUTE_COMPRESSION = 0x3,
     NVME_DIR_COMPUTE_DECOMPRESSION = 0x4,
+	NVME_DIR_COMPUTE_END = 0x5,
 	// TODO add other compute operations here.
 };
+
+bool isCompression(enum NvmeComputeDirectiveType c);
+bool opTypeMismatch(enum NvmeComputeDirectiveType c, bool is_write);
 
 typedef struct NvmeDirId {
        uint8_t dir_support[32];
@@ -1338,7 +1342,7 @@ uint32_t femu_oc12_tbl_size(NvmeNamespace *ns);
 
 
 void nvme_process_sq_admin(void *opaque);
-void nvme_process_sq_io(void *opaque, int index_poller, int computational_fd_send, int computational_fd_recv);
+void nvme_process_sq_io(void *opaque, int index_poller, int computational_fd_send, int computational_fd_recv, int ctype_fd);
 
 void femu_nvme_addr_read(FemuCtrl *n, hwaddr addr, void *buf, int size);
 void femu_nvme_addr_write(FemuCtrl *n, hwaddr addr, void *buf, int size);
