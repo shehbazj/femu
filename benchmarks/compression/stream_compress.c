@@ -1,13 +1,14 @@
 #include "../stream_common/common.h"
 
-void computational_read(int inputfile_fd, int fd)
+void compress(int inputfile_fd, int fd)
 {
 	int err;
 	off_t current_offset;
 
 	unsigned char *buf;
-	if (posix_memalign((void **)&buf, getpagesize(), IO_SEGMENT_SIZE))
-                goto perror;
+	if (posix_memalign((void **)&buf, getpagesize(), IO_SEGMENT_SIZE)) {
+                return;
+	}
 
 	memset(buf, 0, IO_SEGMENT_SIZE);
 
@@ -34,6 +35,7 @@ void computational_read(int inputfile_fd, int fd)
 	} else{
 		printf("disable computational stream directive successful\n");
 	}
+	free(buf);
 }
 
 int main(int argc, char **argv)
@@ -79,12 +81,11 @@ int main(int argc, char **argv)
 
 
    close(fd);
-	free(buf);
+   close(inputfile_fd);
 	return 0;
 
 perror:
    close(fd);
-	free(buf);
 	perror(perrstr);
 	return 1;
 }

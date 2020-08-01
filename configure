@@ -8037,6 +8037,11 @@ cd $source_path/hw/block/femu/gzip_pipe_so/
 make
 cd -
 
+## Also, make benchmarks
+cd $source_path/benchmarks
+make
+cd -
+
 printf "exec" >>config.status
 printf " '%s'" "$0" "$@" >>config.status
 echo ' "$@"' >>config.status
