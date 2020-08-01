@@ -49,6 +49,8 @@ enum ComputationalDirectiveType {
 	POINTER_CHASE_DISABLE = 0x800,
 	COUNTING_ENABLE		= 0x401,
 	COUNTING_DISABLE	= 0x400,
+	COMPRESSION_ENABLE	= 0x1001,
+	COMPRESSION_DISABLE	= 0x1000,
 };
 
 int nvme_dir_send(int fd, __u32 nsid, __u16 dspec, __u8 dtype, __u8 doper,
