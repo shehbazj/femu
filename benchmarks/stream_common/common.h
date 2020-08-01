@@ -21,10 +21,10 @@
 #define IO_TRANSFER_SIZE (4*1024) 
 #define IO_ST_TRANSFER_SIZE (16*1024) 
 #define IO_SEGMENT_SIZE (IO_TRANSFER_SIZE * 8) 
-#define MAX_FILE_OFFSET (1024 * 10)
+#define MAX_FILE_OFFSET (IO_TRANSFER_SIZE * 10)
 
 #define IO_OFFSET_ST 0x2000
-#define IO_OFFSET_NW 0xa000 
+#define IO_OFFSET_NW 0x0
 
 #define nvme_admin_directive_send 0x19
 #define nvme_admin_directive_recv 0x1a
