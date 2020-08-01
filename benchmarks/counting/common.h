@@ -2,6 +2,7 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
