@@ -8038,6 +8038,7 @@ make
 cd -
 
 ## Also, make benchmarks
+export LD_LIBRARY_PATH=$source_path/femu/hw/block/femu/gzip_pipe_so
 cd $source_path/benchmarks
 make
 cd -
