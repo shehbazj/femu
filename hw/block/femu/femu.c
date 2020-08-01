@@ -147,6 +147,7 @@ void computational_process (void)
         t.tv_sec = 0;
         t.tv_nsec = 1;
         sigset_t origmask;
+	int nfds = 2;
 
 	int rc;
 
@@ -178,17 +179,16 @@ void computational_process (void)
 
         while (1)
         {
-                rc = ppoll (fds, 1, &t, &origmask);
+                rc = ppoll (fds, nfds, &t, &origmask);
                 if (rc < 0) {
                         perror( "poll failed");
                         exit(1);
                 }
 
                 if (rc == 0) {
-                //        printf("poll timed out\n");
                         continue;
                 }
-
+		// control command
 		if (fds[0].revents == POLLIN) {
                         if (fds[0].fd == fd_ctype) {
 				ret = read(fd_ctype, &computetype, 1);
@@ -197,7 +197,9 @@ void computational_process (void)
 					exit(1);
 				}
 			}
+			//printf("computetype %d\n", computetype);
 		}
+		// data command
 		if(fds[1].revents == POLLIN) {
 			if (fds[1].fd == fd_get) {
 				switch (computetype) {
@@ -625,6 +627,7 @@ static uint16_t nvme_rw(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     }
 
 	enum NvmeComputeDirectiveType computetype = ns->id_dir->dir_enable[1];
+	//printf("%s():compute type = %d\n", __func__,computetype);
 
     req->slba = slba;
     req->meta_size = 0;
