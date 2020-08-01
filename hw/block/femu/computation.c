@@ -1,3 +1,6 @@
+
+#include "computation.h"
+
 uint64_t count_bits(char *buf)
 {
         int i, j;
