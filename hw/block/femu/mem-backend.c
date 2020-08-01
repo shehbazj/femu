@@ -123,6 +123,7 @@ uint64_t do_compression(int computational_fd_send, int computational_fd_recv, in
 {
 	int ret;
 
+	return true;
 	struct pollfd fds[1];
 	memset(fds, 0 , sizeof(fds));
 
@@ -246,7 +247,7 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
     dma_addr_t cur_addr, cur_len;
     uint64_t mb_oft = data_offset;
     void *mb = mbe->mem_backend;
-	bool dont_increment = false;
+// XXX	bool dont_increment = false;
 
 	uint32_t flash_read_delay = mbe->flash_read_latency;
 	uint32_t flash_write_delay = mbe->flash_write_latency;
@@ -269,63 +270,65 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
 		add_delay(flash_read_delay);
 	}
 	// for compression and decompression, do not do the first I/O.
-        if (!isCompression(mbe->computation_mode)) {
-		printf("do dma\n");
+     // XXX   if (!isCompression(mbe->computation_mode)) {
+	//	printf("do dma\n");
 		if(dma_memory_rw(qsg->as, cur_addr, mb + mb_oft, cur_len, dir)) {
 			error_report("FEMU: dma_memory_rw error");
 		}
-        }else {
+        /*}else {
 		printf("skip DMA\n");
-	}
+	}*/
 
+	printf("%s():compute type %d\n", __func__, computetype);
 	if (mbe->computation_mode) {
-		
+		printf("computation mode\n");
 		// if (is_write) : Write Based computation, eg. compression. else:
 		if ((mb + mb_oft) != NULL) {
 			if (opTypeMismatch(computetype, is_write)) {
-				continue;
-			}
-			switch (computetype) {
-				case NVME_DIR_COMPUTE_NONE:
-					printf("no compute\n");
-					// TODO debug spurious reads..
-					break;
+				printf("optype mismatch\n");
+			} else {
+				switch (computetype) {
+					case NVME_DIR_COMPUTE_NONE:
+						printf("no compute\n");
+						// TODO debug spurious reads..
+						break;
 
-				case NVME_DIR_COMPUTE_COUNTER:
-					printf("counter io\n");
-					ret = do_count(computational_fd_send, computational_fd_recv, ctype_fd, mb, mb_oft, cur_len);
-					if (ret < 0) {
-						printf("Error occured while counting %s\n", strerror(ret));
-					}
-					break;
+					case NVME_DIR_COMPUTE_COUNTER:
+						printf("counter io\n");
+						ret = do_count(computational_fd_send, computational_fd_recv, ctype_fd, mb, mb_oft, cur_len);
+						if (ret < 0) {
+							printf("Error occured while counting %s\n", strerror(ret));
+						}
+						break;
 
-				case NVME_DIR_COMPUTE_POINTER_CHASE:
-					printf("pointer io\n");
-					ret = do_pointer_chase(computational_fd_send, computational_fd_recv, ctype_fd, mb, mb_oft, cur_len, qsg->as, &cur_addr, flash_read_delay);
-					if (ret < 0) {
-						printf("Error occured while counting %s\n", strerror(ret));
-					}
-					break;
+					case NVME_DIR_COMPUTE_POINTER_CHASE:
+						printf("pointer io\n");
+						ret = do_pointer_chase(computational_fd_send, computational_fd_recv, ctype_fd, mb, mb_oft, cur_len, qsg->as, &cur_addr, flash_read_delay);
+						if (ret < 0) {
+							printf("Error occured while counting %s\n", strerror(ret));
+						}
+						break;
 
-				case NVME_DIR_COMPUTE_COMPRESSION:
-				case NVME_DIR_COMPUTE_DECOMPRESSION:
-					printf("compress io\n");
-					ret = do_compression(computational_fd_send, computational_fd_recv, ctype_fd, mb, mb_oft, 
-							cur_len, qsg->as, &cur_addr, flash_write_delay, flash_read_delay, mbe->computation_mode);
-					if (ret) dont_increment = true;
-					break;
+					case NVME_DIR_COMPUTE_COMPRESSION:
+					case NVME_DIR_COMPUTE_DECOMPRESSION:
+						printf("compress io\n");
+						ret = do_compression(computational_fd_send, computational_fd_recv, ctype_fd, mb, mb_oft, 
+								cur_len, qsg->as, &cur_addr, flash_write_delay, flash_read_delay, mbe->computation_mode);
+						//if (ret) dont_increment = true;
+						break;
 
-				default:
-					printf("warning: could not find compute type\n");
+					default:
+						printf("warning: could not find compute type\n");
+				}
 			}
 		}
 	}
 
-	if(!dont_increment) {
+	// XXX if(!dont_increment) {
 	        mb_oft += cur_len;
-	}else {
-		dont_increment = false;
-	}
+	// XXX }else {
+	//	dont_increment = false;
+	//}
 
         sg_cur_byte += cur_len;
         if (sg_cur_byte == qsg->sg[sg_cur_index].len) {
