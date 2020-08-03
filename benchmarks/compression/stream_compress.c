@@ -49,13 +49,14 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	perrstr = argv[1];
-	fd = open(argv[1], IO_OPEN_OPTIONS);
-	if (fd < 0){
+	inputfile_fd = open(argv[1], IO_OPEN_OPTIONS);
+	if (inputfile_fd < 0) {
 		goto perror;
 	}
-	inputfile_fd = open(argv[2], IO_OPEN_OPTIONS);
-	if (inputfile_fd < 0) {
+
+	perrstr = argv[2];
+	fd = open(argv[2], IO_OPEN_OPTIONS);
+	if (fd < 0){
 		goto perror;
 	}
 
