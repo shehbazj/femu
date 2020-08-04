@@ -1,14 +1,9 @@
-#include <dlfcn.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 #include "computation.h"
+
+extern int gzip_me(char *i, char *o, int m);
 
 void init_gzip(int mode)
 {
-	typedef int (*some_func)(char *param, char *parm2 , int x);
-	void *myso = dlopen("/home/shehbaz/femu/hw/block/femu/gzip_pipe_so/libgzip.so", RTLD_NOW);
-	some_func *func = dlsym(myso, "gzip_me");
 	char *i,*o;
 	int ret;
 
@@ -17,16 +12,15 @@ void init_gzip(int mode)
 	strncpy(i, "compression_pipe_send", strlen("compression_pipe_send") + 1);
 	strncpy(o, "compression_pipe_recv", strlen("compression_pipe_recv") + 1);
 
-	// gzip_me(recv pipe, send pipe and mode) where mode is 1 - compress, 2 - decompress.
-	ret = (*func)(i ,o, mode);
+	printf("COMPUTATION PROCESS -- Wait for Compression\n");
+	ret = gzip_me(i, o, mode);
 	if (ret) {
 		printf("unexpected end of gzip\n");
 	}
+	printf("COMPUTATION PROCESS -- Done with Compression\n");
 
 	free(i);
 	free(o);
-	// close shared object when pipe gets closed.
-	dlclose(myso);
 }
 
 uint64_t count_bits(char *buf)
