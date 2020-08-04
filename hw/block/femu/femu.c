@@ -17,7 +17,11 @@
 
 #include <dlfcn.h>
 
-uint64_t ones_counter;
+int send_to_compression_fd;
+int recieve_from_compression_fd;
+// XXX temporary fd for debugging
+int compressed_file_fd;
+
 void computational_process (void);
 extern int gzip_me(char *i, char *o, int mode);
 
@@ -138,6 +142,7 @@ void computational_process (void)
 {
 	char buf[4096];
         int ret;
+	int mode;
 	uint64_t counter;
 	enum NvmeComputeDirectiveType computetype = NVME_DIR_COMPUTE_NONE;
 	struct pollfd fds[2];
@@ -197,7 +202,20 @@ void computational_process (void)
 					exit(1);
 				}
 			}
-			//printf("computetype %d\n", computetype);
+			printf("%s(): received computetype %d\n", __func__, computetype);
+
+			// XXX generalize to any stream workflow :-
+			if (computetype == NVME_DIR_COMPUTE_COMPRESSION || computetype == NVME_DIR_COMPUTE_DECOMPRESSION)
+			{
+					// do nothing here. writes go directly to shared object.
+					// the process blocks until compression fd is closed and
+					// returned.
+					// gzip_me(recv pipe, send pipe and mode) where mode is 1 - compress, 2 - decompress.
+					mode = (computetype == NVME_DIR_COMPUTE_COMPRESSION) ? 1 : 2;
+					printf("%s():waiting for gzip to begin\n",__func__);
+					init_gzip(mode);
+					printf("%s():end of gzip\n",__func__);
+			}
 		}
 		// data command
 		if(fds[1].revents == POLLIN) {
@@ -207,17 +225,18 @@ void computational_process (void)
 						break;
 
 					case NVME_DIR_COMPUTE_COUNTER:
+						printf("%s():counter\n", __func__);
 					        ret = read(fd_get, buf, 4096);
 				                if (ret < 0) {
                 				        printf("error reading in child\n");
 				                        exit (1);
 				                }
 						counter = count_bits(buf);
-						ones_counter += counter;
                 				ret = write(fd_put, &counter, sizeof(counter));
 						break;
 
 					case NVME_DIR_COMPUTE_POINTER_CHASE:
+						printf("%s():ptr chase\n", __func__);
 						ret = read(fd_get, buf, 4096);
 				                if (ret < 0) {
                 				        printf("error reading in child\n");
@@ -229,23 +248,19 @@ void computational_process (void)
 
 					case NVME_DIR_COMPUTE_COMPRESSION:
 					case NVME_DIR_COMPUTE_DECOMPRESSION:
-						// do nothing here. writes go directly to shared object.
-						// the process blocks until compression fd is closed and
-						// returned.
-						// gzip_me(recv pipe, send pipe and mode) where mode is 1 - compress, 2 - decompress.
-						init_gzip(computetype - NVME_DIR_COMPUTE_COMPRESSION + 1);
+						// do nothing here.
 						break;
 					
 					case NVME_DIR_COMPUTE_END:
+						printf("%s():end compute\n",__func__);
 						return;
 
 					default:
-						printf("warning unknown computation type %d\n", computetype);
+						printf("%s():warning unknown computation type %d\n", __func__, computetype);
 
 				}
 			}
 		}
-		printf("comp thread - waiting to read\n");
         }
 	return;
 }
@@ -356,7 +371,6 @@ static void *nvme_poller(void *arg)
 		printf("Could end computational process\n");
 	}
 
-//	printf("%s(): ones_counter = %lu\n", __func__,ones_counter);
 	return NULL;
 }
 
@@ -809,7 +823,7 @@ static void nvme_clear_ctrl(FemuCtrl *n, bool shutdown)
         femu_debug("disabling NVMe Controller ...\n");
     }
 
-	printf("%s():ones_counter = %lu\n", __func__,ones_counter);
+//	printf("%s():ones_counter = %lu\n", __func__,ones_counter);
 
     if (shutdown) {
         femu_debug("%s,clear_guest_notifier\n", __func__);
