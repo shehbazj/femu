@@ -4,6 +4,7 @@ void compress(int inputfile_fd, int fd)
 {
 	int err;
 	off_t current_offset;
+	int ret;
 
 	unsigned char *buf;
 	if (posix_memalign((void **)&buf, getpagesize(), IO_SEGMENT_SIZE)) {
@@ -21,11 +22,18 @@ void compress(int inputfile_fd, int fd)
 		printf("enable computational stream directive successful\n");
 	}
 
-	while (read(inputfile_fd, buf, IO_SEGMENT_SIZE) != 0) {
-		err = write(fd, buf, IO_TRANSFER_SIZE);
+	ret = read(inputfile_fd, buf, IO_TRANSFER_SIZE);
+	if(ret < 0) {
+		printf("read failed\n");
+	}
+	while (ret > 0) {
+		printf("writing data %d\n", ret);
+		err = write(fd, buf, ret);
 		if (err < 0) {
 			printf("compression failed\n");
+			exit(1);
 		}
+		ret = read(inputfile_fd, buf, IO_TRANSFER_SIZE);
 	}
 
 	err = set_computational_stream_directive(fd, COMPRESSION_DISABLE);
