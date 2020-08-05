@@ -27,6 +27,8 @@
 #include <sys/stat.h>
 #include <time.h>
 
+#define _GL_WINDOWS_STAT_TIMESPEC 0
+
 #ifndef _GL_INLINE_HEADER_BEGIN
  #error "Please include config.h first."
 #endif
@@ -34,6 +36,18 @@ _GL_INLINE_HEADER_BEGIN
 #ifndef _GL_STAT_TIME_INLINE
 # define _GL_STAT_TIME_INLINE _GL_INLINE
 #endif
+
+long int 
+get_stat_atime_ns (struct stat const *st);
+
+long int
+get_stat_mtime_ns (struct stat const *st);
+
+struct timespec
+get_stat_atime (struct stat const *st);
+
+struct timespec
+get_stat_mtime (struct stat const *st);
 
 #ifdef __cplusplus
 extern "C" {

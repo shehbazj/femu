@@ -41,7 +41,12 @@
 #include "config.h"
 #include "stat-time.h"
 
+#define D_INO_IN_DIRENT 0
 #define O_BINARY 0
+#define GNULIB_FDUTIMENSAT 0
+
+void yyerror (char *s);
+
 static char const *const license_msg[] = {
 "Copyright (C) 2017 Free Software Foundation, Inc.",
 "Copyright (C) 1993 Jean-loup Gailly.",
@@ -68,7 +73,7 @@ static char const *const license_msg[] = {
  * For the meaning of all compilation flags, see comments in Makefile.in.
  */
 
-#include <config.h>
+#include "config.h"
 #include <ctype.h>
 #include <sys/types.h>
 #include <signal.h>
@@ -106,11 +111,11 @@ static char const *const license_msg[] = {
 #endif
 #if !NO_DIR
 # include <dirent.h>
-# include <savedir.h>
+# include "savedir.h"
 #endif
 
 #ifndef NO_UTIME
-#  include <utimens.h>
+#  include "utimens.h"
 #endif
 
 #ifndef MAX_PATH_LEN
@@ -351,7 +356,7 @@ local void treat_dir    (int fd, char *dir);
 #define strequ(s1, s2) (strcmp((s1),(s2)) == 0)
 
 static void
-try_help ()
+try_help (void)
 {
   fprintf (stderr, "Try `%s --help' for more information.\n",
            program_name);
@@ -359,7 +364,7 @@ try_help ()
 }
 
 /* ======================================================================== */
-local void help()
+local void help(void)
 {
     static char const* const help_msg[] = {
  "Compress or uncompress FILEs (by default, compress FILES in-place).",
@@ -412,10 +417,11 @@ local void help()
 }
 
 /* ======================================================================== */
-local void license()
+local void license(void)
 {
-    char const *const *p = license_msg;
 	return;
+//    char const *const *p = license_msg;
+//	return;
 	/*
     printf ("%s %s\n", program_name, Version);
     while (*p) printf ("%s\n", *p++);
@@ -423,7 +429,7 @@ local void license()
 }
 
 /* ======================================================================== */
-local void version()
+local void version(void)
 {
     license ();
     printf ("\n");
@@ -759,7 +765,7 @@ int main(int argc, char *argv[])
 */
 /* Return nonzero when at end of file on input.  */
 local int
-input_eof ()
+input_eof (void)
 {
   if (!decompress || last_member)
     return 1;
@@ -779,7 +785,7 @@ input_eof ()
 /* ========================================================================
  * Compress or decompress stdin
  */
-local void treat_stdin()
+local void treat_stdin(void)
 {
     if (!force && !list
         && (presume_input_tty
@@ -926,8 +932,8 @@ atdir_set (char const *dir, ptrdiff_t dirlen)
 /* ========================================================================
  * Compress or decompress the given file
  */
-local void treat_file(iname)
-    char *iname;
+local void treat_file(char *iname)
+//    char *iname;
 {
     /* Accept "-" as synonym for stdin */
 	/*
@@ -1157,7 +1163,7 @@ local void treat_file(iname)
  *   ofname has already been updated if there was an original name.
  * OUT assertions: ifd and ofd are closed in case of error.
  */
-local int create_outfile()
+local int create_outfile(void)
 {
   int name_shortened = 0;
 	/*
@@ -1239,8 +1245,8 @@ local int create_outfile()
  * .??z suffix as indicating a compressed file; some people use .xyz
  * to denote volume data.
  */
-local char *get_suffix(name)
-    char *name;
+local char *get_suffix(char *name)
+//    char *name;
 {
     int nlen, slen;
     char suffix[MAX_SUFFIX+3]; /* last chars of name, forced to lower case */
@@ -1355,9 +1361,9 @@ open_and_stat (char *name, int flags, struct stat *st)
  * Return an open file descriptor or -1.
  */
 static int
-open_input_file (iname, sbuf)
-    char *iname;
-    struct stat *sbuf;
+open_input_file (char *iname, struct stat *sbuf)
+//    char *iname;
+//    struct stat *sbuf;
 {
     int ilen;  /* strlen(ifname) */
     int z_suffix_errno = 0;
@@ -1454,7 +1460,7 @@ open_input_file (iname, sbuf)
  * Generate ofname given ifname. Return OK, or WARNING if file must be skipped.
  * Sets save_orig_name to true if the file name has been truncated.
  */
-int make_ofname()
+int make_ofname(void)
 {
     char *suff;            /* ofname z suffix */
 
@@ -1535,9 +1541,9 @@ int make_ofname()
    zero byte if NBYTES == (size_t) -1.  If FLAGS say that the header
    CRC should be computed, update the CRC accordingly.  */
 static void
-discard_input_bytes (nbytes, flags)
-    size_t nbytes;
-    unsigned int flags;
+discard_input_bytes (size_t nbytes, unsigned int flags)
+//    size_t nbytes;
+//    unsigned int flags;
 {
   while (nbytes != 0)
     {
@@ -1562,8 +1568,8 @@ discard_input_bytes (nbytes, flags)
  * IN assertions: there is at least one remaining compressed member.
  *   If the member is a zip file, it must be the only one.
  */
-local int get_method(in)
-    int in;        /* input file descriptor */
+local int get_method(int in)
+//    int in;        /* input file descriptor */
 {
     uch flags;     /* compression flags */
     uch magic[10]; /* magic header */
@@ -1796,9 +1802,9 @@ local int get_method(in)
  * If the given method is < 0, display the accumulated totals.
  * IN assertions: time_stamp, header_bytes and ifile_size are initialized.
  */
-local void do_list(ifd, method)
-    int ifd;     /* input file descriptor */
-    int method;  /* compression method */
+local void do_list(int ifd, int method)
+//    int ifd;     /* input file descriptor */
+//  int method;  /* compression method */
 {
     ulg crc;  /* original crc */
     static int first_time = 1;
@@ -1909,8 +1915,8 @@ local void do_list(ifd, method)
  *
  * IN assertion: for compression, the suffix of the given name is z_suffix.
  */
-local void shorten_name(name)
-    char *name;
+local void shorten_name(char *name)
+//    char *name;
 {
     int len;                 /* length of name without z_suffix */
     char *trunc = NULL;      /* character to be truncated */
@@ -1967,7 +1973,7 @@ local void shorten_name(name)
  * The compressed file already exists, so ask for confirmation.
  * Return ERROR if the file must be skipped.
  */
-local int check_ofname()
+local int check_ofname(void)
 {
     /* Ask permission to overwrite the existing file */
     if (!force) {
@@ -2011,8 +2017,8 @@ do_chown (int fd, char const *name, uid_t uid, gid_t gid)
  * Copy modes, times, ownership from input file to output file.
  * IN assertion: to_stdout is false.
  */
-local void copy_stat(ifstat)
-    struct stat *ifstat;
+local void copy_stat(struct stat *ifstat)
+//    struct stat *ifstat;
 {
     mode_t mode = ifstat->st_mode & (S_IRWXG | S_IRWXO );
     int r;
@@ -2076,9 +2082,9 @@ local void copy_stat(ifstat)
 /* ========================================================================
  * Recurse through the given directory.
  */
-local void treat_dir (fd, dir)
-    int fd;
-    char *dir;
+local void treat_dir (int fd, char* dir)
+//    int fd;
+//    char *dir;
 {
     DIR      *dirp;
     char     nbuf[MAX_PATH_LEN];
@@ -2126,7 +2132,7 @@ local void treat_dir (fd, dir)
 /* Make sure signals get handled properly.  */
 
 static void
-install_signal_handlers ()
+install_signal_handlers (void)
 {
   int nsigs = sizeof handled_sig / sizeof handled_sig[0];
   int i;
@@ -2168,8 +2174,8 @@ install_signal_handlers ()
 /* ========================================================================
  * Free all dynamically allocated variables and exit with the given code.
  */
-local void do_exit(exitcode)
-    int exitcode;
+local void do_exit(int exitcode)
+//    int exitcode;
 {
     static int in_exit = 0;
 
@@ -2202,7 +2208,7 @@ finish_out (void)
  * Close and unlink the output file.
  */
 static void
-remove_output_file ()
+remove_output_file (void)
 {
   int fd;
   sigset_t oldset;
@@ -2222,7 +2228,7 @@ remove_output_file ()
  * Error handler.
  */
 void
-abort_gzip ()
+abort_gzip (void)
 {
    remove_output_file ();
    do_exit(ERROR);
@@ -2232,8 +2238,8 @@ abort_gzip ()
  * Signal handler.
  */
 static RETSIGTYPE
-abort_gzip_signal (sig)
-     int sig;
+abort_gzip_signal (int sig)
+//     int sig;
 {
   if (! SA_NOCLDSTOP)
     signal (sig, SIG_IGN);
