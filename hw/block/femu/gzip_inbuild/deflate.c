@@ -82,6 +82,9 @@
 #include "lzw.h" /* just for consistency checking */
 #include "verify.h"
 
+#define DEBUG 0
+#define debug_print(args ...) if (DEBUG) fprintf(stderr, args)
+
 /* ===========================================================================
  * Configuration parameters
  */
@@ -742,6 +745,7 @@ off_t deflate(void)
     if (compr_level <= 3) return deflate_fast(); /* optimized for speed */
 
     /* Process the input block. */
+	debug_print("%s():%d begin deflate\n", __func__, __LINE__);
     while (lookahead != 0) {
         /* Insert the string window[gzipstrstart .. gzipstrstart+2] in the
          * dictionary, and set hash_head to the head of the hash chain:
@@ -845,6 +849,7 @@ off_t deflate(void)
          */
         while (lookahead < MIN_LOOKAHEAD && !eofile) fill_window();
     }
+	debug_print("%s():%d end deflate\n", __func__, __LINE__);
     if (match_available) ct_tally (0, window[gzipstrstart-1]);
 
     return FLUSH_BLOCK(1); /* eof */

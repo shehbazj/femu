@@ -38,6 +38,9 @@
 #include "gzip.h"
 */
 
+#define DEBUG 0
+#define debug_print(args ...) if (DEBUG) fprintf(stderr, args)
+
 #include "config.h"
 #include "stat-time.h"
 
@@ -464,7 +467,7 @@ off_t get_file_size(int infile)
 	return sz;
 }
 
-__attribute__((__noreturn__)) int gzip_me(char *infile, char *outfile, int mode);
+int gzip_me(char *infile, char *outfile, int mode);
 
 /* ======================================================================== */
 //int main (int argc, char **argv)
@@ -719,7 +722,9 @@ int gzip_me(char *infile, char *outfile, int mode)
             SET_BINARY_MODE (STDOUT_FILENO);
         }
         //while (optind < argc) {
+		debug_print("%s():%d calling treat file\n",__func__, __LINE__);
             treat_file(infile);
+		debug_print("%s():%d done calling treat file\n",__func__, __LINE__);
         //}
     } else {  /* Standard input */
         treat_stdin();
@@ -859,14 +864,20 @@ local void treat_stdin(void)
     /* Actually do the compression/decompression. Loop over zipped members.
      */
     for (;;) {
-        if (work (STDIN_FILENO, STDOUT_FILENO) != OK)
+        if (work (STDIN_FILENO, STDOUT_FILENO) != OK) {
+		debug_print("%s():returining as work returned not OK\n", __func__);
           return;
+	}
 
-        if (input_eof ())
-          break;
+	debug_print("%s():do not break\n",__func__);
+//        if (input_eof ())
+//          break;
 
         method = get_method(ifd);
-        if (method < 0) return; /* error message already emitted */
+        if (method < 0) {
+		debug_print("%s():return as method returned 0\n", __func__);
+		return; /* error message already emitted */
+	}
         bytes_out = 0;            /* required for length check */
     }
 
@@ -1037,6 +1048,7 @@ local void treat_file(char *iname)
     if (decompress) {
 	// *Nescafe* create outfile here so that helper program does not 
 	// stay blocked on opening the output pipe
+	debug_print("%s():%d creating outfile\n",__func__, __LINE__);
         if (create_outfile() != OK) return;
         method = get_method(ifd); /* updates ofname if original given */
         if (method < 0) {
@@ -1062,7 +1074,9 @@ local void treat_file(char *iname)
 	// *Nescafe* file has already been created for decompression, create
 	// file only during compression.
 	if (!decompress) {
+		debug_print("%s():%d creating outfile\n",__func__, __LINE__);
 	        if (create_outfile() != OK) return;
+		debug_print("%s():%d done creating outfile\n",__func__, __LINE__);
 	}
 
         if (!decompress && save_orig_name && !verbose && !quiet) {
@@ -1079,19 +1093,23 @@ local void treat_file(char *iname)
 
     /* Actually do the compression/decompression. Loop over zipped members.
      */
+	debug_print("%s():%d start actual work\n",__func__, __LINE__);
     for (;;) {
         if ((*work)(ifd, ofd) != OK) {
             method = -1; /* force cleanup */
             break;
         }
 
-        if (input_eof ())
+        if (input_eof ()) {
+		debug_print("%s():received eof from input\n",__func__);
           break;
+	}
 
         method = get_method(ifd);
         if (method < 0) break;    /* error message already emitted */
         bytes_out = 0;            /* required for length check */
     }
+	debug_print("%s():%d done with work\n",__func__, __LINE__);
 
     if (close (ifd) != 0)
       read_error ();

@@ -27,6 +27,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#define DEBUG 0
+#define debug_print(args ...) if (DEBUG) fprintf(stderr, args)
+
 local ulg crc;       /* crc on uncompressed file data */
 off_t header_bytes;   /* number of bytes in gzip header */
 
@@ -89,7 +92,9 @@ int zip(int in,int out)
     }
     header_bytes = (off_t)outcnt;
 
+	debug_print("begin deflate\n");
     (void)deflate();
+	debug_print("done deflating\n");
 
 #ifndef NO_SIZE_CHECK
   /* Check input size
