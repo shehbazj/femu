@@ -283,7 +283,7 @@ local off_t deflate_fast (void);
       void match_init (void); /* asm code initialization */
 #endif
 
-#ifdef DEBUG
+#ifdef DEBUG1
 local  void check_match (IPos start, IPos match, int length);
 #endif
 
@@ -512,11 +512,11 @@ longest_match(IPos cur_match)
 }
 #endif /* ASMV */
 
-#ifdef DEBUG
+#ifdef DEBUG1
 /* ===========================================================================
  * Check that the match at match_start is indeed a match.
  */
-local void check_match(start, match, length)
+local void check_match(IPos start, IPos match, int length)
     IPos start, match;
     int length;
 {
