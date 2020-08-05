@@ -158,19 +158,19 @@ void computational_process (void)
 
 	printf("COMPUTATIONAL THREAD PID = %d\n", getpid());
 
-	int fd_ctype = open ("ctype_pipe", 0666);
+	int fd_ctype = open ("ctype_pipe", O_RDWR);
 	if (fd_ctype < 0) {
 		perror("Opening ctype pipe Failed\n");
 		exit(1);
 	}
 	
-	int fd_get = open ("computational_pipe_send", 0666);
+	int fd_get = open ("computational_pipe_send", O_RDONLY);
 	if (fd_get < 0) {
 		perror("Opening send pipe Failed\n");
 		exit (1);
 	}
 
-	int fd_put = open ("computational_pipe_recv", 0666);
+	int fd_put = open ("computational_pipe_recv", O_WRONLY);
 	if (fd_put < 0) {
 		perror("Opening send pipe Failed\n");
 		exit (1);
@@ -309,12 +309,12 @@ static void *nvme_poller(void *arg)
 			computational_process();
 		}
 		else {
-			computational_fd_send = open("computational_pipe_send", O_RDWR);
+			computational_fd_send = open("computational_pipe_send", O_WRONLY);
 			if (computational_fd_send < 0) {
 				printf("error opening computational_fd \n");
 				exit(1);
 			}
-			computational_fd_recv = open("computational_pipe_recv", O_RDWR);
+			computational_fd_recv = open("computational_pipe_recv", O_RDONLY);
 			if (computational_fd_recv < 0) {
 				printf("error opening computational_fd \n");
 				exit(1);
@@ -338,7 +338,7 @@ static void *nvme_poller(void *arg)
                 NvmeSQueue *sq = n->sq[index];
                 NvmeCQueue *cq = n->cq[index];
                 if (sq && sq->is_active && cq && cq->is_active) {
-                    nvme_process_sq_io(sq, index, computational_fd_send, computational_fd_recv, ctype_fd);
+                    nvme_process_sq_io(sq, index, &computational_fd_send, &computational_fd_recv, ctype_fd);
                 }
                 nvme_process_cq_cpl(n, index);
             }
@@ -355,7 +355,7 @@ static void *nvme_poller(void *arg)
                     NvmeSQueue *sq = n->sq[i];
                     NvmeCQueue *cq = n->cq[i];
                     if (sq && sq->is_active && cq && cq->is_active) {
-                        nvme_process_sq_io(sq, index, computational_fd_send, computational_fd_recv, ctype_fd);
+                        nvme_process_sq_io(sq, index, &computational_fd_send, &computational_fd_recv, ctype_fd);
                     }
                 }
                 nvme_process_cq_cpl(n, index);
@@ -592,7 +592,7 @@ void nvme_update_str_stat(FemuCtrl *n, NvmeNamespace *ns, uint16_t dspec)
 }
 
 static uint16_t nvme_rw(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
-    NvmeRequest *req, int computational_fd_send, int computational_fd_recv, int ctype_fd)
+    NvmeRequest *req, int *computational_fd_send, int *computational_fd_recv, int ctype_fd)
 {
     NvmeRwCmd *rw = (NvmeRwCmd *)cmd;
     uint16_t ctrl = le16_to_cpu(rw->control);
@@ -657,7 +657,7 @@ static uint16_t nvme_rw(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     return NVME_DNR;
 }
 
-static uint16_t nvme_io_cmd(FemuCtrl *n, NvmeCmd *cmd, NvmeRequest *req, int computational_fd_send, int computational_fd_recv, int ctype_fd)
+static uint16_t nvme_io_cmd(FemuCtrl *n, NvmeCmd *cmd, NvmeRequest *req, int *computational_fd_send, int *computational_fd_recv, int ctype_fd)
 {
     NvmeNamespace *ns;
     uint32_t nsid = le32_to_cpu(cmd->nsid);
@@ -754,7 +754,7 @@ static inline void nvme_copy_cmd(NvmeCmd *dst, NvmeCmd *src)
 #endif
 }
 
-void nvme_process_sq_io(void *opaque, int index_poller, int computational_fd_send, int computational_fd_recv, int ctype_fd)
+void nvme_process_sq_io(void *opaque, int index_poller, int *computational_fd_send, int *computational_fd_recv, int ctype_fd)
 {
     NvmeSQueue *sq = opaque;
     FemuCtrl *n = sq->ctrl;
