@@ -226,6 +226,7 @@ static char dfname[MAX_PATH_LEN]; /* name of dir containing output file */
 static struct stat istat;         /* status for input file */
 int  ifd;                  /* input file descriptor */
 int  ofd;                  /* output file descriptor */
+int  inpipe_fd;                  /* input file descriptor */
 static int dfd = -1;       /* output directory file descriptor */
 unsigned insize;           /* valid bytes in inbuf */
 unsigned inptr;            /* index of next byte to be processed in inbuf */
@@ -311,6 +312,7 @@ local void license      (void);
 local void version      (void);
 local int input_eof	(void);
 local void treat_stdin  (void);
+local void treat_inpipe  (void);
 local void treat_file   (char *iname);
 local int create_outfile (void);
 local char *get_suffix  (char *name);
@@ -437,6 +439,13 @@ int main (int argc, char **argv)
     program_name = gzip_base_name (argv[0]);
     proglen = strlen (program_name);
 
+	inpipe_fd = open("/tmp/inpipe", O_RDONLY);
+	if (inpipe_fd < 0) {
+		printf("Open inpipe fd failed %s\n", strerror(errno));
+		exit(1);
+	}
+
+// 	to_stdout = 1;
     /* Suppress .exe for MSDOS and OS/2: */
     if (4 < proglen && strequ (program_name + proglen - 4, ".exe"))
       program_name[proglen - 4] = '\0';
@@ -670,11 +679,12 @@ int main (int argc, char **argv)
             treat_file(argv[optind++]);
         }
     } else {  /* Standard input */
-        treat_stdin();
+	treat_inpipe();
+	//treat_stdin();
     }
     if (stdin_was_read && close (STDIN_FILENO) != 0)
       {
-        strcpy (ifname, "stdin");
+        strcpy (ifname, "/tmp/inpipe");
         read_error ();
       }
     if (list)
@@ -717,8 +727,138 @@ input_eof ()
 /* ========================================================================
  * Compress or decompress stdin
  */
+//local void treat_stdin()
+local void treat_inpipe()
+{
+	int in_fileno = inpipe_fd;
+
+    if (!force && !list
+        && (presume_input_tty
+            || isatty (decompress ? inpipe_fd : STDOUT_FILENO))) {
+        /* Do not send compressed data to the terminal or read it from
+         * the terminal. We get here when user invoked the program
+         * without parameters, so be helpful. According to the GNU standards:
+         *
+         *   If there is one behavior you think is most useful when the output
+         *   is to a terminal, and another that you think is most useful when
+         *   the output is a file or a pipe, then it is usually best to make
+         *   the default behavior the one that is useful with output to a
+         *   terminal, and have an option for the other behavior.
+         *
+         * Here we use the --force option to get the other behavior.
+         */
+        if (! quiet)
+          fprintf (stderr,
+                   ("%s: compressed data not %s a terminal."
+                    " Use -f to force %scompression.\n"
+                    "For help, type: %s -h\n"),
+                   program_name,
+                   decompress ? "read from" : "written to",
+                   decompress ? "de" : "",
+                   program_name);
+        do_exit(ERROR);
+    }
+
+    if (decompress || !ascii) {
+      SET_BINARY_MODE (inpipe_fd);
+    }
+    if (!test && !list && (!decompress || !ascii)) {
+      SET_BINARY_MODE (STDOUT_FILENO);
+//      SET_BINARY_MODE (outpipe_fd);
+    }
+    strcpy(ifname, "/tmp/inpipe");
+    strcpy(ofname, "/tmp/output");
+
+    /* Get the file's timestamp and size.  */
+    if (fstat (inpipe_fd, &istat) != 0)
+      {
+        progerror ("standard input");
+        do_exit (ERROR);
+      }
+    ifile_size = S_ISREG (istat.st_mode) ? istat.st_size : -1;
+    time_stamp.tv_nsec = -1;
+    if (!no_time || list)
+      {
+        if (S_ISREG (istat.st_mode))
+          time_stamp = get_stat_mtime (&istat);
+        else
+          gettime (&time_stamp);
+      }
+
+    clear_bufs(); /* clear input and output buffers */
+    to_stdout = 1;
+    part_nb = 0;
+    ifd = inpipe_fd;
+    stdin_was_read = true;
+
+    if (decompress) {
+        method = get_method(ifd);
+        if (method < 0) {
+            do_exit(exit_code); /* error message already emitted */
+        }
+    }
+    if (list) {
+        do_list(ifd, method);
+        return;
+    }
+
+    /* Actually do the compression/decompression. Loop over zipped members.
+     */
+    for (;;) {
+	printf("doing work\n");
+        if (work (inpipe_fd, STDOUT_FILENO) != OK)
+          return;
+//        if (work (inpipe_fd, outpipe_fd) != OK)
+	printf("done with work\n");
+        if (input_eof ())
+          break;
+
+        method = get_method(ifd);
+        if (method < 0) return; /* error message already emitted */
+        bytes_out = 0;            /* required for length check */
+    }
+
+    if (verbose) {
+        if (test) {
+            fprintf(stderr, " OK\n");
+
+        } else if (!decompress) {
+            display_ratio(bytes_in-(bytes_out-header_bytes), bytes_in, stderr);
+            fprintf(stderr, "\n");
+#ifdef DISPLAY_STDIN_RATIO
+        } else {
+            display_ratio(bytes_out-(bytes_in-header_bytes), bytes_out,stderr);
+            fprintf(stderr, "\n");
+#endif
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ========================================================================
+ * Compress or decompress stdin
+ */
 local void treat_stdin()
 {
+
     if (!force && !list
         && (presume_input_tty
             || isatty (decompress ? STDIN_FILENO : STDOUT_FILENO))) {
@@ -752,7 +892,7 @@ local void treat_stdin()
     if (!test && !list && (!decompress || !ascii)) {
       SET_BINARY_MODE (STDOUT_FILENO);
     }
-    strcpy(ifname, "stdin");
+    strcpy(ifname, "/tmp/inpipe");
     strcpy(ofname, "stdout");
 
     /* Get the file's timestamp and size.  */
