@@ -649,6 +649,7 @@ local off_t deflate_fast()
     IPos hash_head; /* head of the hash chain */
     int flush = 0;  /* set if current block must be flushed, 2=>and padded  */
     unsigned match_length = 0;  /* length of best match */
+
     prev_length = MIN_MATCH-1;
     while (lookahead != 0) {
         /* Insert the string window[strstart .. strstart+2] in the

@@ -19,13 +19,9 @@
 
 #include <config.h>
 #include <ctype.h>
-#include <errno.h>
 
 #include "tailor.h"
 #include "gzip.h"
-
-#include <unistd.h>
-#include <fcntl.h>
 
 local ulg crc;       /* crc on uncompressed file data */
 off_t header_bytes;   /* number of bytes in gzip header */
@@ -116,12 +112,6 @@ int zip(in, out)
  * translation, and update the crc and input file size.
  * IN assertion: size >= 2 (for end-of-line translation)
  */
-
-int fd_is_valid(int fd)
-{
-    return fcntl(fd, F_GETFD) != -1 || errno != EBADF;
-}
-
 int file_read(buf, size)
     char *buf;
     unsigned size;
@@ -129,10 +119,6 @@ int file_read(buf, size)
     unsigned len;
 
     Assert(insize == 0, "inbuf not empty");
-	if (!fd_is_valid(ifd)) {
-		printf("invalid fd\n");
-		return EOF;
-	}
 
     len = read_buffer (ifd, buf, size);
     if (len == 0) return (int)len;

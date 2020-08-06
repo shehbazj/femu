@@ -116,8 +116,7 @@ int copy(in, out)
         bytes_in += got;
         insize = (unsigned)got;
         inptr = 0;
-    }	
-	
+    }
     return OK;
 }
 

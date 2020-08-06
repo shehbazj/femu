@@ -1,5 +1,3 @@
-XXX
-
 /* gzip (GNU zip) -- compress files with zip algorithm and 'compress' interface
 
    Copyright (C) 1999, 2001-2002, 2006-2007, 2009-2018 Free Software
@@ -318,7 +316,7 @@ local int create_outfile (void);
 local char *get_suffix  (char *name);
 local int  open_input_file (char *iname, struct stat *sbuf);
 local void discard_input_bytes (size_t nbytes, unsigned int flags);
-//local int  make_ofname  (void);
+local int  make_ofname  (void);
 local void shorten_name  (char *name);
 local int  get_method   (int in);
 local void do_list      (int ifd, int method);
@@ -425,57 +423,28 @@ local void progerror (char const *string)
     exit_code = ERROR;
 }
 
-off_t get_file_size(int infile)
-{
-	off_t sz, ret;
-	sz = lseek(infile, 0L, SEEK_END);
-
-	if (sz < 0 ) {
-		printf("seek failed\n");
-		exit(0);
-	}
-
-	ret = lseek(infile, 0L, SEEK_SET);
-
-	if (ret < 0) {
-		printf("seek failed\n");
-		exit(0);
-	}
-	return sz;
-}
-
-__attribute__((__noreturn__)) int gzip_me(char *infile, char *outfile, int mode);
-
 /* ======================================================================== */
-//int main (int argc, char **argv)
-int gzip_me(char *infile, char *outfile, int mode)
+int main (int argc, char **argv)
 {
     int file_count;     /* number of files to process */
-//    size_t proglen;     /* length of program_name */
-//    char **argv_copy;
+    size_t proglen;     /* length of program_name */
+    char **argv_copy;
     int env_argc;
     char **env_argv;
 
-	strcpy(ofname,outfile);
+    EXPAND(argc, argv); /* wild card expansion if necessary */
 
-	if (mode == 2) {
-		work = unzip;
-		decompress = 1;
-	}
-
-//    EXPAND(argc, argv); /* wild card expansion if necessary */
-
-    //program_name = gzip_base_name (argv[0]);
-    //proglen = strlen (program_name);
+    program_name = gzip_base_name (argv[0]);
+    proglen = strlen (program_name);
 
     /* Suppress .exe for MSDOS and OS/2: */
-   // if (4 < proglen && strequ (program_name + proglen - 4, ".exe"))
-   //   program_name[proglen - 4] = '\0';
+    if (4 < proglen && strequ (program_name + proglen - 4, ".exe"))
+      program_name[proglen - 4] = '\0';
 
     /* Add options in GZIP environment variable if there is one */
-    //argv_copy = argv;
-//    env = add_envopt (&env_argc, &argv_copy, OPTIONS_VAR);
-//    env_argv = env ? argv_copy : NULL;
+    argv_copy = argv;
+    env = add_envopt (&env_argc, &argv_copy, OPTIONS_VAR);
+    env_argv = env ? argv_copy : NULL;
 
 #ifndef GNU_STANDARD
 # define GNU_STANDARD 1
@@ -542,7 +511,7 @@ int gzip_me(char *infile, char *outfile, int mode)
           }
 
         if (!env_argv)
-          optc = getopt_long (0, NULL, shortopts, longopts, &longind);
+          optc = getopt_long (argc, argv, shortopts, longopts, &longind);
         if (optc < 0)
           break;
 
@@ -661,8 +630,7 @@ int gzip_me(char *infile, char *outfile, int mode)
     if (no_time < 0) no_time = decompress;
     if (no_name < 0) no_name = decompress;
 
- //   file_count = argc - optind;
-	file_count = 1;
+    file_count = argc - optind;
 
 #if O_BINARY
 #else
@@ -698,9 +666,9 @@ int gzip_me(char *infile, char *outfile, int mode)
         if (to_stdout && !test && !list && (!decompress || !ascii)) {
             SET_BINARY_MODE (STDOUT_FILENO);
         }
-        //while (optind < argc) {
-            treat_file(infile);
-        //}
+        while (optind < argc) {
+            treat_file(argv[optind++]);
+        }
     } else {  /* Standard input */
         treat_stdin();
     }
@@ -724,23 +692,7 @@ int gzip_me(char *infile, char *outfile, int mode)
         && errno != EBADF)
       write_error ();
     do_exit(exit_code);
-    //return exit_code; /* just to avoid lint warning */
-}
-
-int main(int argc, char *argv[])
-{
-	if (argc != 4) {
-		printf("usage gzip infile outfile mode\n");
-		printf("mode\n");
-		printf("1-compression\n");
-		printf("2-decompression\n");
-		exit(0);
-	}
-
-	int option;
-	option = strtol(argv[3], NULL, 10);
-	int ret = gzip_me(argv[1], argv[2], option);
-	return ret;
+    return exit_code; /* just to avoid lint warning */
 }
 
 /* Return nonzero when at end of file on input.  */
@@ -915,14 +867,12 @@ local void treat_file(iname)
     char *iname;
 {
     /* Accept "-" as synonym for stdin */
-	/*
     if (strequ(iname, "-")) {
         int cflag = to_stdout;
         treat_stdin();
         to_stdout = cflag;
         return;
     }
-	*/
 
     /* Check if the input file is present, set ifname and istat: */
     ifd = open_input_file (iname, &istat);
@@ -946,7 +896,6 @@ local void treat_file(iname)
 
     if (! to_stdout)
       {
-	/*
         if (! S_ISREG (istat.st_mode))
           {
             WARN ((stderr,
@@ -955,7 +904,6 @@ local void treat_file(iname)
             close (ifd);
             return;
           }
-	*/
         if (istat.st_mode & S_ISUID)
           {
             WARN ((stderr, "%s: %s is set-user-ID on execution - ignored\n",
@@ -1004,19 +952,15 @@ local void treat_file(iname)
     if (to_stdout && !list && !test) {
         strcpy(ofname, "stdout");
 
-    } /*else if (make_ofname() != OK) {
+    } else if (make_ofname() != OK) {
         close (ifd);
         return;
     }
-	*/
 
     clear_bufs(); /* clear input and output buffers */
     part_nb = 0;
 
     if (decompress) {
-	// *Nescafe* create outfile here so that helper program does not 
-	// stay blocked on opening the output pipe
-        if (create_outfile() != OK) return;
         method = get_method(ifd); /* updates ofname if original given */
         if (method < 0) {
             close(ifd);
@@ -1038,11 +982,7 @@ local void treat_file(iname)
         ofd = STDOUT_FILENO;
         /* Keep remove_ofname_fd negative.  */
     } else {
-	// *Nescafe* file has already been created for decompression, create
-	// file only during compression.
-	if (!decompress) {
-	        if (create_outfile() != OK) return;
-	}
+        if (create_outfile() != OK) return;
 
         if (!decompress && save_orig_name && !verbose && !quiet) {
             fprintf(stderr, "%s: %s compressed to %s\n",
@@ -1145,11 +1085,7 @@ local void treat_file(iname)
 local int create_outfile()
 {
   int name_shortened = 0;
-	/*
   int flags = (O_WRONLY | O_CREAT | O_EXCL
-               | (ascii && decompress ? 0 : O_BINARY));
-	*/
-  int flags = (O_WRONLY | O_EXCL
                | (ascii && decompress ? 0 : O_BINARY));
   char const *base = ofname;
   int atfd = AT_FDCWD;
@@ -1437,7 +1373,7 @@ open_input_file (iname, sbuf)
  * Generate ofname given ifname. Return OK, or WARNING if file must be skipped.
  * Sets save_orig_name to true if the file name has been truncated.
  */
-int make_ofname()
+local int make_ofname()
 {
     char *suff;            /* ofname z suffix */
 

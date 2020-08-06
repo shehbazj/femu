@@ -263,11 +263,8 @@ extern int save_orig_name; /* set if original name must be saved */
 
         /* in zip.c: */
 extern int zip        (int in, int out);
-extern int fd_is_valid(int fd);
 extern int file_read  (char *buf,  unsigned size);
-extern off_t get_file_size(int infile);
 
-int make_ofname(void);
         /* in unzip.c */
 extern int unzip      (int in, int out);
 extern int check_zipfile (int in);
