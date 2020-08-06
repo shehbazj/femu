@@ -445,7 +445,7 @@ int main (int argc, char **argv)
 		exit(1);
 	}
 
-// 	to_stdout = 1;
+ 	to_stdout = 1;
     /* Suppress .exe for MSDOS and OS/2: */
     if (4 < proglen && strequ (program_name + proglen - 4, ".exe"))
       program_name[proglen - 4] = '\0';
