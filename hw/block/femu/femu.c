@@ -20,10 +20,8 @@
 int send_to_compression_fd;
 int recieve_from_compression_fd;
 // XXX temporary fd for debugging
-int compressed_file_fd;
 
 void computational_process (void);
-extern int gzip_me(char *i, char *o, int mode);
 
 static void nvme_post_cqe(NvmeCQueue *cq, NvmeRequest *req)
 {
@@ -196,7 +194,7 @@ void computational_process (void)
 		// control command
 		if (fds[0].revents == POLLIN) {
                         if (fds[0].fd == fd_ctype) {
-				ret = read(fd_ctype, &computetype, 1);
+				ret = read(fd_ctype, &computetype, sizeof(computetype));
 				if (ret < 0) {
 					printf("error reading computation type\n");
 					exit(1);
@@ -210,11 +208,11 @@ void computational_process (void)
 					// do nothing here. writes go directly to shared object.
 					// the process blocks until compression fd is closed and
 					// returned.
-					// gzip_me(recv pipe, send pipe and mode) where mode is 1 - compress, 2 - decompress.
 					mode = (computetype == NVME_DIR_COMPUTE_COMPRESSION) ? 1 : 2;
 					printf("%s():waiting for gzip to begin\n",__func__);
 					init_gzip(mode);
 					printf("%s():end of gzip\n",__func__);
+					computetype =0;
 			}
 		}
 		// data command
@@ -641,7 +639,7 @@ static uint16_t nvme_rw(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     }
 
 	enum NvmeComputeDirectiveType computetype = ns->id_dir->dir_enable[1];
-	//printf("%s():compute type = %d\n", __func__,computetype);
+	printf("%s():compute type = %d\n", __func__,computetype);
 
     req->slba = slba;
     req->meta_size = 0;

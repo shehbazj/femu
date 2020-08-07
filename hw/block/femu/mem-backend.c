@@ -15,7 +15,6 @@
 //static int send_to_compression_fd;
 //static int recieve_from_compression_fd;
 // XXX temporary fd for debugging
-extern int compressed_file_fd;
 
 enum NvmeComputeDirectiveType;
 enum NvmeComputeDirectiveType prev_compute;
@@ -156,13 +155,14 @@ uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_re
 	struct pollfd fds[1];
 	int computational_fd_recv = *computational_fd_recv_ptr;
 	int computational_fd_send = *computational_fd_send_ptr;
+	int compressed_file_fd;
 
 	memset(fds, 0 , sizeof(fds));
 
 	// XXX test file
-
+	
 	debug_print("%s():size of compressed_file.gz %ld\n",__func__, findSize("compressed_file.gz"));
-	compressed_file_fd = open("compressed_file.gz", O_CREAT | O_WRONLY | O_APPEND, 0666);
+	compressed_file_fd = open("compressed_file.gz", O_WRONLY | O_APPEND);
 	if (compressed_file_fd < 0) {
 		printf("error opening compressed file\n");
 		exit(1);
@@ -180,14 +180,8 @@ uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_re
         sigset_t origmask;
 
         int rc;
-//      int total_read_bytes = 0;
 
 	debug_print("computetype = %d\n", computetype);
-	ret = write(ctype_fd, &computetype , sizeof(enum NvmeComputeDirectiveType));
-	if (ret < 0) {
-		printf("write on pipe failed %s\n", strerror(errno));
-		exit(1);
-	}
 
 	if (computetype == NVME_DIR_COMPUTE_COMPRESSION) {
 		dir = DMA_DIRECTION_TO_DEVICE;
@@ -211,37 +205,45 @@ uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_re
 
 	debug_print("%s(): polling on fds\n",__func__);
 	rc = ppoll (fds, 1, &t, &origmask);
-        if (rc < 0) {
-                perror( "poll failed");
-                exit(1);
-        }
+	while (rc != 0) {
+		if (rc < 0) {
+        	        perror( "poll failed");
+	                exit(1);
+	        }
 
-        if (rc == 0) {
-                printf("poll timed out\n");
-        }else {
 		// optionally read back the data.
 		debug_print("%s()trying to read from compression FD Now\n", __func__);
-        	if (fds[0].revents == POLLIN) {
-        	        if (fds[0].fd == computational_fd_recv) {
+	        if (fds[0].revents == POLLIN) {
+	                if (fds[0].fd == computational_fd_recv) {
 				debug_print("%s():reading to computational FD %d\n",__func__, computational_fd_recv);
         	                ret = read (computational_fd_recv, compress_buf, BLOCK_SIZE);
-        	                if (ret < 0) {
+	                        if (ret < 0) {
         	                        printf("read from pipe failed %s\n", strerror(errno));
         	                        exit(1);
-        	                }
-        	                debug_print("%s(): returned %d bytes\n", __func__,ret);
-        	                //total_read_bytes += ret;
-				
+	                        }
+				if (ret == 0) {
+					printf("read 0 bytes\n");
+					break;
+				}
+	                        debug_print("%s(): returned %d bytes\n", __func__,ret);
+
         	                ret = write (compressed_file_fd, compress_buf, ret);
         	                if (ret < 0) {
-        	                        printf("write to outfile failed %s\n", strerror(errno));
-        	                        exit(1);
+			                printf("write to outfile failed %s\n", strerror(errno));
+	                                exit(1);
         	                }
-				
-        	        }
-        	}
+        		}
+	        }
+		memset(fds, 0 , sizeof(fds));
+		fds[0].fd = computational_fd_recv;
+		fds[0].events = POLLIN | POLLERR;
+		rc = ppoll (fds, 1, &t, &origmask);
 	}
-	close(compressed_file_fd);
+	ret = close(compressed_file_fd);
+	if (ret < 0) {
+		printf("%s():file close failed\n", __func__);
+		exit(1);
+	}
 
 	// TODO write only if data has been read back from the thread.
 	// TODO if data has not been read back from the thread, return 1 so that dont_increment is false.
@@ -252,25 +254,36 @@ uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_re
 void do_compression_cleanup(enum NvmeComputeDirectiveType c, int *computational_fd_send_ptr, int *computational_fd_recv_ptr)
 {
 	int ret;
-	char compress_buf[BLOCK_SIZE];
 
 	int computational_fd_send = *computational_fd_send_ptr;
 	int computational_fd_recv = *computational_fd_recv_ptr;
+	int compressed_file_fd;
+	uint8_t compress_buf[BLOCK_SIZE];
 
 	// first, close the compression pipe
-	close (computational_fd_send);
+	ret = fsync(computational_fd_send);
+	if (ret < 0) {
+		printf("sync failed\n");
+		exit(1);
+	}
+	debug_print("%s():close send computational FD %d\n",__func__, computational_fd_send);
+	ret = close (computational_fd_send);
+	if (ret < 0) {
+		printf("close failed\n");
+		exit(1);
+	}
 
 	// next, read everything that is there to read from the compression so.
 	// XXX open test file to write
+
 	debug_print("%s():size of compressed_file.gz %ld\n",__func__, findSize("compressed_file.gz"));
+
 	compressed_file_fd = open("compressed_file.gz", O_WRONLY | O_APPEND);
 	if (compressed_file_fd < 0) {
 		printf("error opening compressed file\n");
 		exit(1);
 	}
 
-	debug_print("%s():close send computational FD %d\n",__func__, computational_fd_send);
-	close(computational_fd_send);
 	debug_print("%s():reading to computational FD %d\n",__func__, computational_fd_recv);
 	ret = read(computational_fd_recv, compress_buf, BLOCK_SIZE);
 	if (ret < 0) {
@@ -283,7 +296,7 @@ void do_compression_cleanup(enum NvmeComputeDirectiveType c, int *computational_
 		debug_print("writing data to compressed file fd %d\n", ret);
 		ret = write(compressed_file_fd, compress_buf, ret);
 		if (ret < 0) {
-			printf("%s():write failed\n",__func__);
+			printf("%s():write failed %s\n",__func__, strerror(errno));
 			return;
 		}
 		debug_print("%s():reading to computational FD %d\n",__func__, computational_fd_recv);
@@ -292,8 +305,15 @@ void do_compression_cleanup(enum NvmeComputeDirectiveType c, int *computational_
 	}
 	debug_print("read done\n");
 	debug_print("%s():size of compressed_file.gz %ld\n",__func__, findSize("compressed_file.gz"));
-	close(computational_fd_recv);
-	close(compressed_file_fd);
+	ret = close(computational_fd_recv);
+	if(ret < 0) {
+		printf("%s():close computational_fd_recv\n", __func__);
+	}
+	ret = close(compressed_file_fd);
+	if(ret < 0) {
+		printf("%s():close compressed_file_fd failed\n", __func__);
+		exit(1);
+	}
 
 	// reopen older computational pipes.
 	computational_fd_send = open("computational_pipe_send", O_WRONLY);
@@ -423,11 +443,17 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
 		// if (is_write) : Write Based computation, eg. compression. else:
 		if ((mb + mb_oft) != NULL) {
 			if (opTypeMismatch(computetype, is_write)) {
-				debug_print("optype mismatch, prev_compute %d\n", prev_compute);
 				if (prev_compute != NVME_DIR_COMPUTE_NONE) {
-					debug_print("previous Computation was %d\n", prev_compute);
 					do_cleanup(prev_compute, computational_fd_send, computational_fd_recv);
 					prev_compute = computetype;
+					enum NvmeComputeDirectiveType nocompute = NVME_DIR_COMPUTE_NONE;
+					printf("%s():reset compute type\n",__func__);
+					ret = write(ctype_fd, &nocompute , sizeof(enum NvmeComputeDirectiveType));
+					if (ret < 0) {
+						printf("write on pipe failed %s\n", strerror(errno));
+						exit(1);
+					}
+					printf("%s():done resetting compute type\n",__func__);
 				}
 			} else {
 				switch (computetype) {
@@ -482,10 +508,18 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
 								exit(1);
 							}
 							// XXX TEMP FILE. remove later.
+
 							debug_print("truncate previous compression file\n");
-							compressed_file_fd = open("compressed_file.gz", O_CREAT | O_TRUNC, 0666);
+							int compressed_file_fd = open("compressed_file.gz", O_CREAT | O_TRUNC, 0666);
 							if (compressed_file_fd < 0) {
 								printf("error opening compressed file\n");
+								exit(1);
+							}
+							close(compressed_file_fd);
+
+							ret = write(ctype_fd, &computetype , sizeof(enum NvmeComputeDirectiveType));
+							if (ret < 0) {
+								printf("write on pipe failed %s\n", strerror(errno));
 								exit(1);
 							}
 						} else {

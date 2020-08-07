@@ -1,11 +1,12 @@
 #include "computation.h"
 
-extern int gzip_me(char *i, char *o, int m);
+extern int zlib_me(FILE *ifstream, FILE *ofstream, int mode);
 
 void init_gzip(int mode)
 {
 	char *i,*o;
 	int ret;
+	FILE *ifile, *ofile;
 
 	i = malloc(100);
 	o = malloc(100);
@@ -13,7 +14,11 @@ void init_gzip(int mode)
 	strncpy(o, "compression_pipe_recv", strlen("compression_pipe_recv") + 1);
 
 	printf("COMPUTATION PROCESS -- Wait for Compression\n");
-	ret = gzip_me(i, o, mode);
+
+	ifile = fopen(i, "r");
+	ofile = fopen(o, "w");
+
+	ret = zlib_me(ifile, ofile, 1);
 	if (ret) {
 		printf("unexpected end of gzip\n");
 	}
