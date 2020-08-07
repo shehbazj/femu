@@ -1,0 +1,16 @@
+obj-$(CONFIG_FEMU_PCI) += adler32.o
+obj-$(CONFIG_FEMU_PCI) += compress.o
+obj-$(CONFIG_FEMU_PCI) += crc32.o
+obj-$(CONFIG_FEMU_PCI) += deflate.o
+obj-$(CONFIG_FEMU_PCI) += gzclose.o
+obj-$(CONFIG_FEMU_PCI) += gzlib.o
+obj-$(CONFIG_FEMU_PCI) += gzread.o
+obj-$(CONFIG_FEMU_PCI) += gzwrite.o
+obj-$(CONFIG_FEMU_PCI) += infback.o
+obj-$(CONFIG_FEMU_PCI) += inffast.o
+obj-$(CONFIG_FEMU_PCI) += inflate.o
+obj-$(CONFIG_FEMU_PCI) += inftrees.o
+obj-$(CONFIG_FEMU_PCI) += trees.o
+obj-$(CONFIG_FEMU_PCI) += uncompr.o
+obj-$(CONFIG_FEMU_PCI) += zutil.o
+obj-$(CONFIG_FEMU_PCI) += zpipe.o
