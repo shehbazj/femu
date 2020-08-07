@@ -26,8 +26,14 @@
 #  define SET_BINARY_MODE(file)
 #endif
 
-//#define CHUNK 16384
-#define CHUNK 4096
+#define CHUNK 16384
+//#define CHUNK 4096
+
+int def(FILE *source, FILE *dest, int level);
+int inf(FILE *source, FILE *dest);
+void zerr(int ret);
+int zlib_me(FILE *ifstream, FILE *ofstream, int mode);
+
 
 /* Compress from file source to file dest until EOF on source.
    def() returns Z_OK on success, Z_MEM_ERROR if memory could not be
@@ -232,7 +238,7 @@ int zlib_me(FILE *ifstream, FILE *ofstream, int mode) {
 	   SET_BINARY_MODE(ifstream);
 	   SET_BINARY_MODE(ofstream);
 	
-        	ret = def(ifstream, ofstream, Z_DEFAULT_COMPRESSION);
+        	int ret = def(ifstream, ofstream, Z_DEFAULT_COMPRESSION);
         if (ret != Z_OK)
             zerr(ret);
         return ret;
