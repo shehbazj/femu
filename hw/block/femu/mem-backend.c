@@ -9,6 +9,8 @@
 #include <string.h>
 #include <poll.h>
 
+#define DEBUG_COMPRESSED_FILE 0
+
 #define DEBUG 1
 #define debug_print(args ...) if (DEBUG) fprintf(stderr, args)
 
@@ -155,19 +157,19 @@ uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_re
 	struct pollfd fds[1];
 	int computational_fd_recv = *computational_fd_recv_ptr;
 	int computational_fd_send = *computational_fd_send_ptr;
+#ifdef DEBUG_COMPRESSED_FILE
 	int compressed_file_fd;
-
+#endif
 	memset(fds, 0 , sizeof(fds));
 
-	// XXX test file
-	
+#ifdef DEBUG_COMPRESSED_FILE
 	debug_print("%s():size of compressed_file.gz %ld\n",__func__, findSize("compressed_file.gz"));
 	compressed_file_fd = open("compressed_file.gz", O_WRONLY | O_APPEND);
 	if (compressed_file_fd < 0) {
 		printf("error opening compressed file\n");
 		exit(1);
 	}
-
+#endif
 	fds[0].fd = computational_fd_recv;
         fds[0].events = POLLIN;
 	uint8_t compress_buf[BLOCK_SIZE];
@@ -226,12 +228,13 @@ uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_re
 					break;
 				}
 	                        debug_print("%s(): returned %d bytes\n", __func__,ret);
-
+#ifdef DEBUG_COMPRESSED_FILE
         	                ret = write (compressed_file_fd, compress_buf, ret);
         	                if (ret < 0) {
 			                printf("write to outfile failed %s\n", strerror(errno));
 	                                exit(1);
         	                }
+#endif
         		}
 	        }
 		memset(fds, 0 , sizeof(fds));
@@ -239,7 +242,9 @@ uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_re
 		fds[0].events = POLLIN | POLLERR;
 		rc = ppoll (fds, 1, &t, &origmask);
 	}
+#ifdef DEBUG_COMPRESSED_FILE
 	ret = close(compressed_file_fd);
+#endif
 	if (ret < 0) {
 		printf("%s():file close failed\n", __func__);
 		exit(1);
@@ -257,7 +262,9 @@ void do_compression_cleanup(enum NvmeComputeDirectiveType c, int *computational_
 
 	int computational_fd_send = *computational_fd_send_ptr;
 	int computational_fd_recv = *computational_fd_recv_ptr;
+#ifdef DEBUG_COMPRESSED_FILE
 	int compressed_file_fd;
+#endif
 	uint8_t compress_buf[BLOCK_SIZE];
 
 	// first, close the compression pipe
@@ -274,15 +281,15 @@ void do_compression_cleanup(enum NvmeComputeDirectiveType c, int *computational_
 	}
 
 	// next, read everything that is there to read from the compression so.
-	// XXX open test file to write
 
+#ifdef DEBUG_COMPRESSED_FILE
 	debug_print("%s():size of compressed_file.gz %ld\n",__func__, findSize("compressed_file.gz"));
-
 	compressed_file_fd = open("compressed_file.gz", O_WRONLY | O_APPEND);
 	if (compressed_file_fd < 0) {
 		printf("error opening compressed file\n");
 		exit(1);
 	}
+#endif
 
 	debug_print("%s():reading to computational FD %d\n",__func__, computational_fd_recv);
 	ret = read(computational_fd_recv, compress_buf, BLOCK_SIZE);
@@ -294,26 +301,32 @@ void do_compression_cleanup(enum NvmeComputeDirectiveType c, int *computational_
 	while (ret > 0)
 	{
 		debug_print("writing data to compressed file fd %d\n", ret);
+#ifdef DEBUG_COMPRESSED_FILE
 		ret = write(compressed_file_fd, compress_buf, ret);
 		if (ret < 0) {
 			printf("%s():write failed %s\n",__func__, strerror(errno));
 			return;
 		}
+#endif
 		debug_print("%s():reading to computational FD %d\n",__func__, computational_fd_recv);
 		ret = read(computational_fd_recv, compress_buf, BLOCK_SIZE);
 		debug_print("read %d data from computational pipe\n", ret);
 	}
 	debug_print("read done\n");
+#ifdef DEBUG_COMPRESSED_FILE
 	debug_print("%s():size of compressed_file.gz %ld\n",__func__, findSize("compressed_file.gz"));
+#endif
 	ret = close(computational_fd_recv);
 	if(ret < 0) {
 		printf("%s():close computational_fd_recv\n", __func__);
 	}
+#ifdef DEBUG_COMPRESSED_FILE
 	ret = close(compressed_file_fd);
 	if(ret < 0) {
 		printf("%s():close compressed_file_fd failed\n", __func__);
 		exit(1);
 	}
+#endif
 
 	// reopen older computational pipes.
 	computational_fd_send = open("computational_pipe_send", O_WRONLY);
@@ -507,8 +520,7 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
 								printf("computational fd recv open failed %s\n", strerror(errno));
 								exit(1);
 							}
-							// XXX TEMP FILE. remove later.
-
+							#ifdef DEBUG_COMPRESSED_FILE
 							debug_print("truncate previous compression file\n");
 							int compressed_file_fd = open("compressed_file.gz", O_CREAT | O_TRUNC, 0666);
 							if (compressed_file_fd < 0) {
@@ -516,7 +528,7 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
 								exit(1);
 							}
 							close(compressed_file_fd);
-
+							#endif
 							ret = write(ctype_fd, &computetype , sizeof(enum NvmeComputeDirectiveType));
 							if (ret < 0) {
 								printf("write on pipe failed %s\n", strerror(errno));
