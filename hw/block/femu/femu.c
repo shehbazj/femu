@@ -19,7 +19,6 @@
 
 int send_to_compression_fd;
 int recieve_from_compression_fd;
-// XXX temporary fd for debugging
 
 void computational_process (void);
 
@@ -639,7 +638,7 @@ static uint16_t nvme_rw(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     }
 
 	enum NvmeComputeDirectiveType computetype = ns->id_dir->dir_enable[1];
-	printf("%s():compute type = %d\n", __func__,computetype);
+	//printf("%s():compute type = %d\n", __func__,computetype);
 
     req->slba = slba;
     req->meta_size = 0;

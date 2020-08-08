@@ -9,9 +9,9 @@
 #include <string.h>
 #include <poll.h>
 
-#define DEBUG_COMPRESSED_FILE 0
+#define DEBUG_COMPRESSED_FILE 1
 
-#define DEBUG 1
+#define DEBUG 0
 #define debug_print(args ...) if (DEBUG) fprintf(stderr, args)
 
 //static int send_to_compression_fd;
@@ -89,7 +89,7 @@ uint64_t do_pointer_chase(int *computational_fd_send_ptr, int *computational_fd_
 		exit(1);
 	}
 
-	printf("new_offset = %lu\n", new_offset);
+	debug_print("new_offset = %lu\n", new_offset);
 	ret = write(computational_fd_send, mb + new_offset, 4096);
 	if ( ret < 0) {
 		printf("write on pipe failed %s\n", strerror(errno));
@@ -97,7 +97,7 @@ uint64_t do_pointer_chase(int *computational_fd_send_ptr, int *computational_fd_
 	}
 	c = 0;
 	ret = read(computational_fd_recv, &c, sizeof(c));
-	printf("received new block number = %lu\n", new_offset);
+	debug_print("received new block number = %lu\n", new_offset);
 	if (ret < 0) {
 		printf("read from pipe failed %s\n", strerror(errno));	
 		exit(1);
@@ -127,7 +127,7 @@ uint64_t do_pointer_chase(int *computational_fd_send_ptr, int *computational_fd_
 				printf("read from pipe failed %s\n", strerror(errno));
 			}
 
-			printf("next block_pointer %lu\n", c);
+			debug_print("next block_pointer %lu\n", c);
 		}else {
 			return c;
 		}
@@ -224,7 +224,7 @@ uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_re
         	                        exit(1);
 	                        }
 				if (ret == 0) {
-					printf("read 0 bytes\n");
+					debug_print("read 0 bytes\n");
 					break;
 				}
 	                        debug_print("%s(): returned %d bytes\n", __func__,ret);
@@ -318,7 +318,7 @@ void do_compression_cleanup(enum NvmeComputeDirectiveType c, int *computational_
 #endif
 	ret = close(computational_fd_recv);
 	if(ret < 0) {
-		printf("%s():close computational_fd_recv\n", __func__);
+		printf("%s():close computational_fd_recv failed %s\n", __func__, strerror(errno));
 	}
 #ifdef DEBUG_COMPRESSED_FILE
 	ret = close(compressed_file_fd);
@@ -370,7 +370,7 @@ uint64_t do_count(int *computational_fd_send_ptr, int *computational_fd_recv_ptr
 		printf("read from pipe failed %s\n", strerror(errno));
 		exit(1);
 	}
-	printf("number of bytes in current block %lu\n", c);
+	debug_print("number of bytes in current block %lu\n", c);
 	return c;
 }
 
@@ -451,7 +451,7 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
 		}
 	}
 
-	debug_print("%s():compute type %d\n", __func__, computetype);
+	//debug_print("%s():compute type %d\n", __func__, computetype);
 	if (mbe->computation_mode) {
 		// if (is_write) : Write Based computation, eg. compression. else:
 		if ((mb + mb_oft) != NULL) {
@@ -460,13 +460,13 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
 					do_cleanup(prev_compute, computational_fd_send, computational_fd_recv);
 					prev_compute = computetype;
 					enum NvmeComputeDirectiveType nocompute = NVME_DIR_COMPUTE_NONE;
-					printf("%s():reset compute type\n",__func__);
+					debug_print("%s():reset compute type\n",__func__);
 					ret = write(ctype_fd, &nocompute , sizeof(enum NvmeComputeDirectiveType));
 					if (ret < 0) {
 						printf("write on pipe failed %s\n", strerror(errno));
 						exit(1);
 					}
-					printf("%s():done resetting compute type\n",__func__);
+					debug_print("%s():done resetting compute type\n",__func__);
 				}
 			} else {
 				switch (computetype) {
@@ -603,7 +603,7 @@ int femu_rw_mem_backend_oc(struct femu_mbe *mbe, QEMUSGList *qsg,
          * for BB: LBAs are continuous
          */
         mb_oft = data_offset[sg_cur_index];
-	printf("mb_oft %lu sg_cur_index %d\n", mb_oft, sg_cur_index);
+	debug_print("mb_oft %lu sg_cur_index %d\n", mb_oft, sg_cur_index);
     }
 
     qemu_sglist_destroy(qsg);
