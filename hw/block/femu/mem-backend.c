@@ -244,6 +244,7 @@ uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_re
 	                                exit(1);
         	                }
 #endif
+				add_delay(flash_write_delay);
 				memcpy (mb + mb_oft, compress_buf, rret);
 				debug_print("%s():---- copying to addr %lu %d\n", __func__, mb_oft, rret);
 				total_bytes_written += rret;
@@ -322,6 +323,7 @@ uint64_t do_compression_cleanup(int *computational_fd_send_ptr, int *computation
 			exit (1);
 		}
 #endif
+		add_delay(flash_write_delay);
 		memcpy(mb + mb_oft , compress_buf, ret);
 		debug_print("%s():---- copying to addr %lu %d\n", __func__, mb_oft, ret);
 		mb_oft += ret;
