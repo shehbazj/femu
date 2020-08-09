@@ -701,6 +701,7 @@ enum NvmeComputeDirectiveType {
 };
 
 bool isCompression(enum NvmeComputeDirectiveType c);
+bool isVariableLength(enum NvmeComputeDirectiveType c);
 bool opTypeMismatch(enum NvmeComputeDirectiveType c, bool is_write);
 
 typedef struct NvmeDirId {

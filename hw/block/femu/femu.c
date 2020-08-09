@@ -135,6 +135,11 @@ bool isCompression(enum NvmeComputeDirectiveType c)
 	return (c == NVME_DIR_COMPUTE_DECOMPRESSION || c == NVME_DIR_COMPUTE_COMPRESSION);
 }
 
+bool isVariableLength(enum NvmeComputeDirectiveType c)
+{
+	return (c == NVME_DIR_COMPUTE_COMPRESSION || c == NVME_DIR_COMPUTE_DECOMPRESSION);
+}
+
 void computational_process (void)
 {
 	char buf[4096];
@@ -646,7 +651,7 @@ static uint16_t nvme_rw(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     req->nlb = nlb;
     req->ns = ns;
 
-    ret = femu_rw_mem_backend_bb(&n->mbe, &req->qsg, data_offset, req->is_write, computational_fd_send, computational_fd_recv, ctype_fd, computetype);
+	ret = femu_rw_mem_backend_bb(&n->mbe, &req->qsg, data_offset, req->is_write, computational_fd_send, computational_fd_recv, ctype_fd, computetype);
     if (!ret) {
         return NVME_SUCCESS;
     }

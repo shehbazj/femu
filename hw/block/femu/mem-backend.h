@@ -12,6 +12,7 @@ struct femu_mbe {
 	int computation_mode;
 	uint32_t flash_read_latency;
 	uint32_t flash_write_latency;
+	uint64_t var_offset;
 };
 
 enum NvmeComputeDirectiveType;

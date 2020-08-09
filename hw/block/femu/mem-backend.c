@@ -9,7 +9,7 @@
 #include <string.h>
 #include <poll.h>
 
-#define DEBUG_COMPRESSED_FILE 1
+#define DEBUG_COMPRESSED_FILE 0
 
 #define DEBUG 0
 #define debug_print(args ...) if (DEBUG) fprintf(stderr, args)
@@ -30,9 +30,12 @@ uint64_t do_count(int *computational_fd_send, int *computational_fd_recv, int ct
 uint64_t do_compression(int *computational_fd_send, int *computational_fd_recv, int ctype_fd, void *mb, uint64_t mb_oft,
 	dma_addr_t cur_len, AddressSpace *as, dma_addr_t *cur_addr, uint32_t flash_write_delay, uint32_t flash_read_delay, enum NvmeComputeDirectiveType);
 
-void do_compression_cleanup(enum NvmeComputeDirectiveType c, int *computational_fd_send, int *computational_fd_recv);
+uint64_t do_compression_cleanup(int *computational_fd_send_ptr, int *computational_fd_recv_ptr, void *mb, uint64_t mb_oft,
+	uint32_t flash_write_delay, uint32_t flash_read_delay, enum NvmeComputeDirectiveType c);
 
-void do_cleanup(enum NvmeComputeDirectiveType c, int *computational_fd_send, int *computational_fd_recv);
+uint64_t do_cleanup(int *computational_fd_send_ptr, int *computational_fd_recv_ptr, struct femu_mbe *mbe, uint64_t mb_oft,
+	uint32_t flash_write_delay, uint32_t flash_read_delay, enum NvmeComputeDirectiveType c);
+
 /* Coperd: FEMU Memory Backend (mbe) for emulated SSD */
 
 long int findSize(const char *file_name);
@@ -152,7 +155,9 @@ long int findSize(const char *file_name)
 uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_recv_ptr, int ctype_fd, void *mb, uint64_t mb_oft,
 	dma_addr_t cur_len, AddressSpace *as, dma_addr_t *cur_addr, uint32_t flash_write_delay, uint32_t flash_read_delay, enum NvmeComputeDirectiveType computetype)
 {
-	int ret;
+	int ret, rret, wret;
+
+	int total_bytes_written=0;
 
 	struct pollfd fds[1];
 	int computational_fd_recv = *computational_fd_recv_ptr;
@@ -163,7 +168,7 @@ uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_re
 	memset(fds, 0 , sizeof(fds));
 
 #ifdef DEBUG_COMPRESSED_FILE
-	debug_print("%s():size of compressed_file.gz %ld\n",__func__, findSize("compressed_file.gz"));
+	printf("%s():size of compressed_file.gz %ld\n",__func__, findSize("compressed_file.gz"));
 	compressed_file_fd = open("compressed_file.gz", O_WRONLY | O_APPEND);
 	if (compressed_file_fd < 0) {
 		printf("error opening compressed file\n");
@@ -173,6 +178,7 @@ uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_re
 	fds[0].fd = computational_fd_recv;
         fds[0].events = POLLIN;
 	uint8_t compress_buf[BLOCK_SIZE];
+	uint8_t queue_buffer[BLOCK_SIZE];
 
 	DMADirection dir;
 
@@ -183,6 +189,9 @@ uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_re
 
         int rc;
 
+	// if this assertion breaks, we need to make queue_buffer dynamic and allocate/dealloate
+	// the memory each time with size cur_len.
+	assert(cur_len == BLOCK_SIZE);
 	debug_print("computetype = %d\n", computetype);
 
 	if (computetype == NVME_DIR_COMPUTE_COMPRESSION) {
@@ -193,16 +202,21 @@ uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_re
 		add_delay(flash_read_delay);
 	}
 
-	// XXX first send the write to disk.... remove this eventually.
-	if (dma_memory_rw(as, *cur_addr, mb + mb_oft, cur_len, dir)) {
+	// copy data from send queue to a buffer.
+
+	if (dma_memory_rw(as, *cur_addr, queue_buffer, cur_len, dir)) {
 		error_report("FEMU: dma_memory_rw error");
 	}
-	debug_print("%s(): completed basic dma write to disk\n", __func__);
+
 	debug_print("%s(): writing to compression fd now\n", __func__);
 
 	// then send the write to the computational media
 	debug_print("%s():writing to computational FD %d\n",__func__, computational_fd_send);
-	ret = write(computational_fd_send, mb + mb_oft, cur_len);
+	wret = write(computational_fd_send, queue_buffer, cur_len);
+	if (wret < 0) {
+		printf("%s():write to computational fd send failed\n", __func__);
+		exit(1);
+	}
 	debug_print("%s(): completed writing to compression fd\n", __func__);
 
 	debug_print("%s(): polling on fds\n",__func__);
@@ -218,23 +232,27 @@ uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_re
 	        if (fds[0].revents == POLLIN) {
 	                if (fds[0].fd == computational_fd_recv) {
 				debug_print("%s():reading to computational FD %d\n",__func__, computational_fd_recv);
-        	                ret = read (computational_fd_recv, compress_buf, BLOCK_SIZE);
-	                        if (ret < 0) {
+				rret = read (computational_fd_recv, compress_buf, BLOCK_SIZE);
+	                        if (rret < 0) {
         	                        printf("read from pipe failed %s\n", strerror(errno));
         	                        exit(1);
 	                        }
-				if (ret == 0) {
+				if (rret == 0) {
 					debug_print("read 0 bytes\n");
 					break;
 				}
-	                        debug_print("%s(): returned %d bytes\n", __func__,ret);
+	                        debug_print("%s(): returned %d bytes\n", __func__,rret);
 #ifdef DEBUG_COMPRESSED_FILE
-        	                ret = write (compressed_file_fd, compress_buf, ret);
-        	                if (ret < 0) {
+        	                wret = write (compressed_file_fd, compress_buf, rret);
+        	                if (wret < 0) {
 			                printf("write to outfile failed %s\n", strerror(errno));
 	                                exit(1);
         	                }
 #endif
+				memcpy (mb + mb_oft, compress_buf, rret);
+				debug_print("%s():---- copying to addr %lu %d\n", __func__, mb_oft, rret);
+				total_bytes_written += rret;
+				mb_oft += rret;
         		}
 	        }
 		memset(fds, 0 , sizeof(fds));
@@ -250,16 +268,16 @@ uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_re
 		exit(1);
 	}
 
-	// TODO write only if data has been read back from the thread.
-	// TODO if data has not been read back from the thread, return 1 so that dont_increment is false.
-	return BLOCK_SIZE;
+	return total_bytes_written;
 }
 
 // drain compression pipe...
-void do_compression_cleanup(enum NvmeComputeDirectiveType c, int *computational_fd_send_ptr, int *computational_fd_recv_ptr)
+uint64_t do_compression_cleanup(int *computational_fd_send_ptr, int *computational_fd_recv_ptr, void *mb, uint64_t mb_oft,
+	uint32_t flash_write_delay, uint32_t flash_read_delay, enum NvmeComputeDirectiveType c)
 {
-	int ret;
+	int ret, wret;
 
+	int total_bytes_written = 0;
 	int computational_fd_send = *computational_fd_send_ptr;
 	int computational_fd_recv = *computational_fd_recv_ptr;
 #ifdef DEBUG_COMPRESSED_FILE
@@ -273,6 +291,7 @@ void do_compression_cleanup(enum NvmeComputeDirectiveType c, int *computational_
 		printf("sync failed\n");
 		exit(1);
 	}
+
 	debug_print("%s():close send computational FD %d\n",__func__, computational_fd_send);
 	ret = close (computational_fd_send);
 	if (ret < 0) {
@@ -295,19 +314,24 @@ void do_compression_cleanup(enum NvmeComputeDirectiveType c, int *computational_
 	ret = read(computational_fd_recv, compress_buf, BLOCK_SIZE);
 	if (ret < 0) {
 		printf("%s():read error\n", __func__);
-		return;
+		exit(1);
 	}
 	debug_print("read %d bytes from recv\n", ret);
 	while (ret > 0)
 	{
 		debug_print("writing data to compressed file fd %d\n", ret);
 #ifdef DEBUG_COMPRESSED_FILE
-		ret = write(compressed_file_fd, compress_buf, ret);
-		if (ret < 0) {
+		wret = write(compressed_file_fd, compress_buf, ret);
+		if (wret < 0) {
 			printf("%s():write failed %s\n",__func__, strerror(errno));
-			return;
+			exit (1);
 		}
 #endif
+		memcpy(mb + mb_oft , compress_buf, ret);
+		debug_print("%s():---- copying to addr %lu %d\n", __func__, mb_oft, ret);
+		mb_oft += ret;
+		total_bytes_written += ret;
+
 		debug_print("%s():reading to computational FD %d\n",__func__, computational_fd_recv);
 		ret = read(computational_fd_recv, compress_buf, BLOCK_SIZE);
 		debug_print("read %d data from computational pipe\n", ret);
@@ -343,7 +367,7 @@ void do_compression_cleanup(enum NvmeComputeDirectiveType c, int *computational_
 	*computational_fd_send_ptr = computational_fd_send;
 	*computational_fd_recv_ptr = computational_fd_recv;
 
-	return;
+	return total_bytes_written;
 }
 
 uint64_t do_count(int *computational_fd_send_ptr, int *computational_fd_recv_ptr, int ctype_fd, void *mb , uint64_t mb_oft, dma_addr_t cur_len)
@@ -374,19 +398,30 @@ uint64_t do_count(int *computational_fd_send_ptr, int *computational_fd_recv_ptr
 	return c;
 }
 
-void do_cleanup(enum NvmeComputeDirectiveType c, int *computational_fd_send, int *computational_fd_recv)
+uint64_t do_cleanup(int *computational_fd_send_ptr, int *computational_fd_recv_ptr, struct femu_mbe *mbe, uint64_t mb_oft,
+	uint32_t flash_write_delay, uint32_t flash_read_delay, enum NvmeComputeDirectiveType c)
 {
+	int ret = 0;
+	void *mb = mbe->mem_backend;
+
+	if (isVariableLength(c)) {
+		mb_oft = mbe->var_offset;
+	}
+
 	switch (c) {
 		case NVME_DIR_COMPUTE_COUNTER:
 			printf("Total Ones = %lu\n", ones_counter);
 			ones_counter = 0;
 			break;
 		case NVME_DIR_COMPUTE_COMPRESSION:
-			do_compression_cleanup(c, computational_fd_send, computational_fd_recv);
+			ret = do_compression_cleanup(computational_fd_send_ptr, computational_fd_recv_ptr, mb, mb_oft,
+				flash_write_delay, flash_read_delay, c);
+			mbe->var_offset += ret;
 			break;
 		default:
 			break;
 	}
+	return ret;
 }
 
 bool opTypeMismatch(enum NvmeComputeDirectiveType c, bool is_write)
@@ -418,12 +453,16 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
     dma_addr_t cur_addr, cur_len;
     uint64_t mb_oft = data_offset;
     void *mb = mbe->mem_backend;
-//XXX	bool dont_increment = false;
 
 	uint32_t flash_read_delay = mbe->flash_read_latency;
 	uint32_t flash_write_delay = mbe->flash_write_latency;
 
 	int ret;
+
+	if (isVariableLength(computetype)) {
+		mb_oft = mbe->var_offset;
+	}
+
     DMADirection dir = DMA_DIRECTION_FROM_DEVICE;
 
     if (is_write) {
@@ -445,7 +484,7 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
 	// XXX even for writes, we do not perform the first I/O.
 	// XXX The first I/O is only involved for reads, OR for cases where no computation needs
 	// to take place.
-        if (!isCompression(mbe->computation_mode)) {
+        if (!isCompression(computetype)) {
 		if(dma_memory_rw(qsg->as, cur_addr, mb + mb_oft, cur_len, dir)) {
 			error_report("FEMU: dma_memory_rw error");
 		}
@@ -457,7 +496,7 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
 		if ((mb + mb_oft) != NULL) {
 			if (opTypeMismatch(computetype, is_write)) {
 				if (prev_compute != NVME_DIR_COMPUTE_NONE) {
-					do_cleanup(prev_compute, computational_fd_send, computational_fd_recv);
+					do_cleanup(computational_fd_send, computational_fd_recv, mbe, mb_oft, flash_write_delay, flash_read_delay, prev_compute);
 					prev_compute = computetype;
 					enum NvmeComputeDirectiveType nocompute = NVME_DIR_COMPUTE_NONE;
 					debug_print("%s():reset compute type\n",__func__);
@@ -475,7 +514,7 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
 						// TODO debug spurious reads..
 						if (prev_compute != NVME_DIR_COMPUTE_NONE) {
 							debug_print("previous Computation was %d\n", prev_compute);
-							do_cleanup(prev_compute, computational_fd_send, computational_fd_recv);
+							do_cleanup(computational_fd_send, computational_fd_recv, mbe, mb_oft, flash_write_delay, flash_read_delay, prev_compute);
 							prev_compute = computetype;
 						}
 						break;
@@ -540,7 +579,7 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
 						prev_compute = computetype;
 						ret = do_compression(computational_fd_send, computational_fd_recv, ctype_fd, mb, mb_oft, 
 								cur_len, qsg->as, &cur_addr, flash_write_delay, flash_read_delay, computetype);
-						//if (!ret) dont_increment = true;
+						mbe->var_offset += ret;
 						break;
 
 					default:
@@ -550,11 +589,9 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
 		}
 	}
 
-	// XXX if(!dont_increment) {
+	if(!isVariableLength(computetype)) {
 	        mb_oft += cur_len;
-	// XXX }else {
-	//	dont_increment = false;
-	//}
+	}
 
         sg_cur_byte += cur_len;
         if (sg_cur_byte == qsg->sg[sg_cur_index].len) {
