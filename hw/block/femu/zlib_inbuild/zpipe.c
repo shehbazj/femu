@@ -241,5 +241,8 @@ int zlib_me(FILE *ifstream, FILE *ofstream, int mode) {
         	int ret = def(ifstream, ofstream, Z_DEFAULT_COMPRESSION);
         if (ret != Z_OK)
             zerr(ret);
+
+	fclose(ifstream);
+	fclose(ofstream);
         return ret;
 }
