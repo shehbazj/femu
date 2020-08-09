@@ -12,7 +12,6 @@ common-obj-$(CONFIG_NVME_PCI) += nvme/nvme.o nvme/nvme-ns.o nvme/ocssd.o nvme/oc
 
 obj-$(CONFIG_FEMU_PCI) += femu/nvme-util.o
 obj-$(CONFIG_FEMU_PCI) += femu/nvme-core.o
-LIBS += -ldl
 obj-$(CONFIG_FEMU_PCI) += femu/femu.o
 obj-$(CONFIG_FEMU_PCI) += femu/computation.o
 obj-$(CONFIG_FEMU_PCI) += femu/ocssd/
