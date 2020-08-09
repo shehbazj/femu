@@ -5,8 +5,8 @@ void compress(int inputfile_fd, int fd)
 	int err;
 	off_t current_offset;
 	int ret;
-
-	unsigned char *buf;
+	int count = 0;
+	uint8_t *buf;
 	if (posix_memalign((void **)&buf, getpagesize(), IO_SEGMENT_SIZE)) {
                 return;
 	}
@@ -24,10 +24,11 @@ void compress(int inputfile_fd, int fd)
 
 	ret = read(inputfile_fd, buf, IO_TRANSFER_SIZE);
 	if(ret < 0) {
-		printf("read failed\n");
+		printf("read failed %s\n", strerror(errno));
+		exit(1);
 	}
 	while (ret > 0) {
-		printf("writing data %d\n", ret);
+		printf("writing data block %d bytes %d\n", count++, ret);
 		err = write(fd, buf, ret);
 		if (err < 0) {
 			printf("compression failed\n");
