@@ -1,10 +1,14 @@
-all: stream_compress stream_decompress
+all: stream_compression stream_decompress host_compression
 
-stream_compress: stream_compress.c
-	gcc ../stream_common/common.c stream_compress.c -o stream_compress
+stream_compression: stream_compression.c
+	gcc ../stream_common/common.c stream_compression.c -o stream_compression
 
 stream_decompress: stream_decompress.c
 	gcc ../stream_common/common.c stream_decompress.c -o stream_decompress
 
+host_compression: host_compression.c
+	gcc host_compression.c -lz -o host_compression
+
+
 clean:
-	rm -rf stream_compress stream_compress
+	rm -rf stream_compress stream_compression host_compression

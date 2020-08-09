@@ -52,6 +52,7 @@ int main(int argc, char **argv)
 	static const char *perrstr;
 	int err, fd, i;
 	int inputfile_fd;
+	unsigned long long start, end;
 	
 	if (argc != 3) {
 		fprintf(stderr, "Usage: %s <inputfile> <device>\n", argv[0]);
@@ -69,6 +70,13 @@ int main(int argc, char **argv)
 		goto perror;
 	}
 
+	char c;
+	printf("SET CPU Limit\n");
+	printf("cpulimit -p <process> -l <limit>\n");
+	printf("Press key once CPU Limit has been set\n");
+	scanf("%c", &c);
+
+
 	err = enable_stream_directive(fd);
 
 	if (err<0){
@@ -84,7 +92,11 @@ int main(int argc, char **argv)
 		printf("allocate stream resource successful\n");
 	}
 
+	start = rdtsc();
 	compress(inputfile_fd, fd);
+	end = rdtsc();
+
+        printf("cycles spent: %llu\n",end - start);
 
 //	testing if counting is disabled correctly.
 //	computational_read(&f, 0);
