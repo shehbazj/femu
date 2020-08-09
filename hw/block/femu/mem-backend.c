@@ -14,10 +14,6 @@
 #define DEBUG 0
 #define debug_print(args ...) if (DEBUG) fprintf(stderr, args)
 
-//static int send_to_compression_fd;
-//static int recieve_from_compression_fd;
-// XXX temporary fd for debugging
-
 enum NvmeComputeDirectiveType;
 enum NvmeComputeDirectiveType prev_compute;
 uint64_t ones_counter;
@@ -114,12 +110,12 @@ uint64_t do_pointer_chase(int *computational_fd_send_ptr, int *computational_fd_
 			if (dma_memory_rw(as, *cur_addr, mb + new_offset, cur_len, dir)) {
 				error_report("FEMU: dma_memory_rw error");
 			}
-			ret = write(ctype_fd, &computetype , 1);
+			ret = write(ctype_fd, &computetype , sizeof(enum NvmeComputeDirectiveType));
 			if (ret < 0) {
 				printf("write on pipe failed %s\n", strerror(errno));
 				exit(1);
 			}
-			ret = write(computational_fd_send, mb + new_offset, 4096);
+			ret = write(computational_fd_send, mb + new_offset, BLOCK_SIZE);
 			if ( ret < 0) {
 				printf("write on pipe failed %s\n", strerror(errno));
 			}
@@ -138,17 +134,16 @@ uint64_t do_pointer_chase(int *computational_fd_send_ptr, int *computational_fd_
 	return c;
 }
 
+#ifdef DEBUG_COMPRESSED_FILE
 long int findSize(const char *file_name)
 {
     struct stat st; /*declare stat variable*/
-    
-    /*get the size using stat()*/
-
     if(stat(file_name,&st)==0)
         return (st.st_size);
     else
         return -1;
 }
+#endif
 
 // return number of bytes read.
 // computational_fd_send and computational_fd_recv are linked to compression pipes.
@@ -481,8 +476,8 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
 	}
 	// for compression and decompression, do not do the first I/O.
 	// XXX change this to stream based workloads, or workloads that require writes.
-	// XXX even for writes, we do not perform the first I/O.
-	// XXX The first I/O is only involved for reads, OR for cases where no computation needs
+	// even for writes, we do not perform the first I/O.
+	// The first I/O is only involved for reads, OR for cases where no computation needs
 	// to take place.
         if (!isCompression(computetype)) {
 		if(dma_memory_rw(qsg->as, cur_addr, mb + mb_oft, cur_len, dir)) {
@@ -490,7 +485,6 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
 		}
 	}
 
-	//debug_print("%s():compute type %d\n", __func__, computetype);
 	if (mbe->computation_mode) {
 		// if (is_write) : Write Based computation, eg. compression. else:
 		if ((mb + mb_oft) != NULL) {
