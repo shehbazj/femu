@@ -11,4 +11,4 @@ host_compression: host_compression.c
 
 
 clean:
-	rm -rf stream_compress stream_compression host_compression
+	rm -rf stream_decompress stream_compression host_compression
