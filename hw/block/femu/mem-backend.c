@@ -170,43 +170,43 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
         cur_addr = qsg->sg[sg_cur_index].base + sg_cur_byte;
         cur_len = qsg->sg[sg_cur_index].len - sg_cur_byte;
 
-	// make first I/O irrespective of compute mode.
-	if (is_write) {
-		add_delay(flash_write_delay);
-	} else {
-		add_delay(flash_read_delay);
-	}
+        // make first I/O irrespective of compute mode.
+        if (is_write) {
+            add_delay(flash_write_delay);
+        } else {
+            add_delay(flash_read_delay);
+        }
         if (dma_memory_rw(qsg->as, cur_addr, mb + mb_oft, cur_len, dir)) {
-		error_report("FEMU: dma_memory_rw error");
+            error_report("FEMU: dma_memory_rw error");
         }
 
-	if (mbe->computation_mode) {
-		// if (is_write) : Write Based computation, eg. compression. else:
-		if (!is_write && ((mb + mb_oft) != NULL) ) {
-			switch (computetype) {
-				case NVME_DIR_COMPUTE_NONE:
-					// TODO debug spurious reads..
-					break;
+        if (mbe->computation_mode) {
+            // if (is_write) : Write Based computation, eg. compression. else:
+            if (!is_write && ((mb + mb_oft) != NULL) ) {
+                switch (computetype) {
+                    case NVME_DIR_COMPUTE_NONE:
+                        // TODO debug spurious reads..
+                        break;
 
-				case NVME_DIR_COMPUTE_COUNTER:
-					ret = do_count(computational_fd_send, computational_fd_recv, mb, mb_oft, cur_len);
-					if (ret < 0) {
-						printf("Error occured while counting %s\n", strerror(ret));
-					}
-					break;
+                    case NVME_DIR_COMPUTE_COUNTER:
+                        ret = do_count(computational_fd_send, computational_fd_recv, mb, mb_oft, cur_len);
+                        if (ret < 0) {
+                            printf("Error occured while counting %s\n", strerror(ret));
+                        }
+                        break;
 
-				case NVME_DIR_COMPUTE_POINTER_CHASE:
-					ret = do_pointer_chase(computational_fd_send, computational_fd_recv, mb, mb_oft, cur_len, qsg->as, &cur_addr, flash_read_delay);
-					if (ret < 0) {
-						printf("Error occured while counting %s\n", strerror(ret));
-					}
-					break;
+                    case NVME_DIR_COMPUTE_POINTER_CHASE:
+                        ret = do_pointer_chase(computational_fd_send, computational_fd_recv, mb, mb_oft, cur_len, qsg->as, &cur_addr, flash_read_delay);
+                        if (ret < 0) {
+                            printf("Error occured while counting %s\n", strerror(ret));
+                        }
+                        break;
 
-				default:
-					printf("warning: could not find compute type\n");
-			}
-		}
-	}
+                    default:
+                        printf("warning: could not find compute type\n");
+                }
+            }
+        }
 
         mb_oft += cur_len;
 
