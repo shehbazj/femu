@@ -1261,6 +1261,7 @@ typedef struct FemuCtrl {
     uint64_t        eis_addr_hva;
 
     uint8_t         femu_mode;
+    uint8_t         femu_ramdisk_backend;
 	uint8_t		computation_mode;
 	uint32_t		flash_read_latency;
 	uint32_t		flash_write_latency;

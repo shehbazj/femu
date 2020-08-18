@@ -9,6 +9,7 @@ struct femu_mbe {
     void *mem_backend;
     int64_t size; /* in bytes */
     int femu_mode;
+    int femu_ramdisk_backend;
 	int computation_mode;
 	uint32_t flash_read_latency;
 	uint32_t flash_write_latency;

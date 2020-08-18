@@ -35,13 +35,61 @@ uint64_t do_cleanup(int *computational_fd_send_ptr, int *computational_fd_recv_p
 /* Coperd: FEMU Memory Backend (mbe) for emulated SSD */
 
 long int findSize(const char *file_name);
+void* mmap_memory(int ram_fd, size_t size);
+
+void* mmap_memory(int ram_fd, size_t size) {
+  // Our memory buffer will be readable and writable:
+  int protection = PROT_READ | PROT_WRITE;
+
+  // The buffer will be shared (meaning other processes can access it), but
+  // anonymous (meaning third-party processes cannot obtain an address for it),
+  // so only this process and its children will be able to use it:
+  int visibility = MAP_SHARED ;
+
+  // The remaining parameters to `mmap()` are not important for this use case,
+  // but the manpage for `mmap` explains their purpose.
+  return mmap(NULL, size, protection, visibility, ram_fd, 0);
+}
 
 void femu_init_mem_backend(struct femu_mbe *mbe, int64_t nbytes)
 {
     assert(!mbe->mem_backend);
+	int mem_backend_fd;
+	int ret;
 
     mbe->size = nbytes;
-    mbe->mem_backend = g_malloc0(nbytes);
+	if (!mbe->femu_ramdisk_backend) {
+		printf("initialize mem-backend from Heap\n");
+		mbe->mem_backend = g_malloc0(nbytes);
+	}else {
+		// init ramdisk code here.
+		femu_debug("MMAPPED TO RAMDISK\n");
+		mem_backend_fd = open("/dev/shm/memfile", O_CREAT | O_RDWR , 0666);
+		if (mem_backend_fd < 0) {
+        		error_report("FEMU: cannot create /dev/shm/memfile\n");
+       			 abort();
+		}
+
+		// remove old memory footprint
+		ret = ftruncate(mem_backend_fd, 0);
+		if (ret < 0) {
+			error_report("FEMU: could not create /dev/shm/memfile with 0 bytes\n");
+			abort();
+		}
+
+		// resize memory
+		ret = ftruncate(mem_backend_fd, nbytes);
+		if (ret < 0) {
+			error_report("FEMU: could not create /dev/shm/memfile with %ld bytes\n", nbytes);
+			abort();
+		}
+
+		// why mmap file if the file is already in shm?
+		// the reason we do this is to be compatible with existing
+		// in-memory linear 1-on-1 relationship that FEMU models.
+
+		mbe->mem_backend = mmap_memory(mem_backend_fd, nbytes);	
+	}
     if (mbe->mem_backend == NULL) {
         error_report("FEMU: cannot allocate %" PRId64 " bytes for emulating SSD,"
                 "make sure you have enough free DRAM in your host\n", nbytes);
@@ -50,7 +98,12 @@ void femu_init_mem_backend(struct femu_mbe *mbe, int64_t nbytes)
 
     if (mlock(mbe->mem_backend, nbytes) == -1) {
         error_report("FEMU: failed to pin %" PRId64 " bytes ...\n", nbytes);
-        g_free(mbe->mem_backend);
+	if (!mbe->femu_ramdisk_backend) {
+		g_free(mbe->mem_backend);
+	} else {
+		// free ramdisk
+		munmap(mbe->mem_backend, nbytes);
+	}
         abort();
     }
 }
@@ -59,7 +112,13 @@ void femu_destroy_mem_backend(struct femu_mbe *mbe)
 {
     if (mbe->mem_backend) {
         munlock(mbe->mem_backend, mbe->size);
-        g_free(mbe->mem_backend);
+	if (!mbe->femu_ramdisk_backend) {
+		g_free(mbe->mem_backend);
+	} else {
+		// free ramdisk
+		femu_debug("MUNMAPPED IN RAMDISK\n");
+		munmap(mbe->mem_backend, mbe->size);
+	}
     }
 }
 

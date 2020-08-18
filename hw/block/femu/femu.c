@@ -1392,6 +1392,7 @@ static void femu_realize(PCIDevice *pci_dev, Error **errp)
 
     bs_size = ((int64_t)n->memsz) * 1024 * 1024;
 
+    n->mbe.femu_ramdisk_backend = n->femu_ramdisk_backend;
     femu_init_mem_backend(&n->mbe, bs_size);
     n->mbe.femu_mode = n->femu_mode;
 	n->mbe.computation_mode = n->computation_mode;
@@ -1503,6 +1504,7 @@ static Property femu_props[] = {
     DEFINE_PROP_UINT16("vid", FemuCtrl, vid, 0x1d1d),
     DEFINE_PROP_UINT16("did", FemuCtrl, did, 0x1f1f),
     DEFINE_PROP_UINT8("femu_mode", FemuCtrl, femu_mode, FEMU_DEF_NOSSD_MODE),
+    DEFINE_PROP_UINT8("femu_ramdisk_backend", FemuCtrl, femu_ramdisk_backend, 0),
     DEFINE_PROP_UINT8("computation_mode", FemuCtrl, computation_mode, FEMU_DEF_NOCOMPUTATION_MODE),
     DEFINE_PROP_UINT32("flash_read_latency", FemuCtrl, flash_read_latency, 0),
     DEFINE_PROP_UINT32("flash_write_latency", FemuCtrl, flash_write_latency, 0),
