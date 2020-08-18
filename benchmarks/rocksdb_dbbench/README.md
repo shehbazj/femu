@@ -1,3 +1,10 @@
+Install the following packages to run rocksdb:
+
+```
+sudo apt-get install libsnappy-dev
+sudo apt install libgflags-dev/bionic
+```
+
 This folder contains the following scripts:
 
 `fillrandom.sh` Minimal `db_bench` code that triggers compactions by filling rocksdb with random key sequences.
