@@ -128,6 +128,11 @@ static void nvme_process_cq_cpl(void *arg, int index_poller)
     }
 }
 
+bool isRDB(enum NvmeComputeDirectiveType c)
+{
+	return (c == NVME_DIR_ROCKSDB_PUT || c == NVME_DIR_ROCKSDB_GET);
+}
+
 bool isCompression(enum NvmeComputeDirectiveType c)
 {
 	return (c == NVME_DIR_COMPUTE_DECOMPRESSION || c == NVME_DIR_COMPUTE_COMPRESSION);
@@ -215,6 +220,8 @@ void computational_process (void)
 					init_gzip(mode);
 					printf("%s():end of gzip\n",__func__);
 					computetype =0;
+			}else if (computetype == NVME_DIR_ROCKSDB_PUT || computetype == NVME_DIR_ROCKSDB_GET) {
+					init_rdb_secondary();
 			}
 		}
 		// data command
@@ -250,7 +257,12 @@ void computational_process (void)
 					case NVME_DIR_COMPUTE_DECOMPRESSION:
 						// do nothing here.
 						break;
-					
+
+					case NVME_DIR_ROCKSDB_GET:
+					case NVME_DIR_ROCKSDB_PUT:
+						// XXX call secondary db instance
+						break;
+
 					case NVME_DIR_COMPUTE_END:
 						printf("%s():end compute\n",__func__);
 						return;
@@ -636,6 +648,17 @@ static uint16_t nvme_rw(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
 		printf("dtype detected %d\n", dtype);
           nvme_update_str_stat(n, ns, dspec);
 	}
+       
+       // sync with ramdisk on each write. used for rocksdb like
+       // workloads
+	
+       if (&n->mbe.femu_ramdisk_backend) {
+		ret = msync(n->mbe.mem_backend, n->mbe.size, MS_SYNC);
+		if (ret < 0) {
+			printf("!!!!!! MSYNC ERROR!!!!!! %s\n", strerror(errno));
+		}
+       }
+
     }
 
 	enum NvmeComputeDirectiveType computetype = ns->id_dir->dir_enable[1];

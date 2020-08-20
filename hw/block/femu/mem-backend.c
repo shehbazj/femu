@@ -22,6 +22,7 @@ uint64_t do_pointer_chase(int *computational_fd_send, int *computational_fd_recv
 		uint64_t mb_oft, dma_addr_t cur_len, AddressSpace *as, dma_addr_t *cur_addr, uint32_t read_delay);
 
 uint64_t do_count(int *computational_fd_send, int *computational_fd_recv, int ctype_fd, void *mb , uint64_t mb_oft, dma_addr_t cur_len);
+uint64_t do_rdb_op(int *computational_fd_send, int *computational_fd_recv, int ctype_fd, void *mb , uint64_t mb_oft, dma_addr_t cur_len);
 
 uint64_t do_compression(int *computational_fd_send, int *computational_fd_recv, int ctype_fd, void *mb, uint64_t mb_oft,
 	dma_addr_t cur_len, AddressSpace *as, dma_addr_t *cur_addr, uint32_t flash_write_delay, uint32_t flash_read_delay, enum NvmeComputeDirectiveType);
@@ -55,40 +56,42 @@ void femu_init_mem_backend(struct femu_mbe *mbe, int64_t nbytes)
 {
     assert(!mbe->mem_backend);
 	int mem_backend_fd;
-	int ret;
+//	int ret;
 
     mbe->size = nbytes;
+    	//assert(nbytes <= 2 * 1024 * 1024 * 1024);
 	if (!mbe->femu_ramdisk_backend) {
 		printf("initialize mem-backend from Heap\n");
 		mbe->mem_backend = g_malloc0(nbytes);
 	}else {
 		// init ramdisk code here.
 		femu_debug("MMAPPED TO RAMDISK\n");
-		mem_backend_fd = open("/dev/shm/memfile", O_CREAT | O_RDWR , 0666);
+		mem_backend_fd = open("/dev/pmem0", O_RDWR | O_SYNC);
 		if (mem_backend_fd < 0) {
-        		error_report("FEMU: cannot create /dev/shm/memfile\n");
+        		error_report("FEMU: cannot create pmem\n");
        			 abort();
 		}
-
+		/*
 		// remove old memory footprint
 		ret = ftruncate(mem_backend_fd, 0);
 		if (ret < 0) {
-			error_report("FEMU: could not create /dev/shm/memfile with 0 bytes\n");
+			error_report("FEMU: could not create pmem with 0 bytes\n");
 			abort();
 		}
 
 		// resize memory
 		ret = ftruncate(mem_backend_fd, nbytes);
 		if (ret < 0) {
-			error_report("FEMU: could not create /dev/shm/memfile with %ld bytes\n", nbytes);
+			error_report("FEMU: could not create pmem with %ld bytes\n", nbytes);
 			abort();
 		}
-
+		*/
 		// why mmap file if the file is already in shm?
 		// the reason we do this is to be compatible with existing
 		// in-memory linear 1-on-1 relationship that FEMU models.
 
-		mbe->mem_backend = mmap_memory(mem_backend_fd, nbytes);	
+		mbe->mem_backend = mmap_memory(mem_backend_fd, nbytes);
+		close(mem_backend_fd);
 	}
     if (mbe->mem_backend == NULL) {
         error_report("FEMU: cannot allocate %" PRId64 " bytes for emulating SSD,"
@@ -426,6 +429,13 @@ uint64_t do_compression_cleanup(int *computational_fd_send_ptr, int *computation
 	return total_bytes_written;
 }
 
+
+uint64_t do_rdb_op(int *computational_fd_send_ptr, int *computational_fd_recv_ptr, int ctype_fd, void *mb , uint64_t mb_oft, dma_addr_t cur_len)
+{
+	// send key, recieve value.
+	return 0;
+}
+
 uint64_t do_count(int *computational_fd_send_ptr, int *computational_fd_recv_ptr, int ctype_fd, void *mb , uint64_t mb_oft, dma_addr_t cur_len)
 {	
 	uint8_t computetype = NVME_DIR_COMPUTE_COUNTER;
@@ -495,6 +505,18 @@ bool opTypeMismatch(enum NvmeComputeDirectiveType c, bool is_write)
 		} else {
 			return true;
 		}
+	} else if (c == NVME_DIR_ROCKSDB_PUT) {
+		if (is_write) {
+			return false;
+		}else {
+			return true;
+		}
+	}else if (c == NVME_DIR_ROCKSDB_GET) {
+		if (is_write) {
+			return true;
+		} else {
+			return false;
+		}
 	}
 //	printf("%s(): compute dir type %d is_write %d\n", __func__, c, is_write);
 	return true;
@@ -540,7 +562,7 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
 	// even for writes, we do not perform the first I/O.
 	// The first I/O is only involved for reads, OR for cases where no computation needs
 	// to take place.
-        if (!isCompression(computetype)) {
+        if (!isCompression(computetype) && !isRDB(computetype)) {
 		if(dma_memory_rw(qsg->as, cur_addr, mb + mb_oft, cur_len, dir)) {
 			error_report("FEMU: dma_memory_rw error");
 		}
@@ -635,6 +657,15 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
 						ret = do_compression(computational_fd_send, computational_fd_recv, ctype_fd, mb, mb_oft, 
 								cur_len, qsg->as, &cur_addr, flash_write_delay, flash_read_delay, computetype);
 						mbe->var_offset += ret;
+						break;
+
+					case NVME_DIR_ROCKSDB_GET:
+					case NVME_DIR_ROCKSDB_PUT:
+						// XXX send request based on computetype to computational store
+						// will most probably send read requests to computational store
+						// and get resultant requests via pipe from computational store.
+						// uint64_t do_rdb_op(int *computational_fd_send, int *computational_fd_recv, int ctype_fd, void *mb , uint64_t mb_oft, dma_addr_t cur_len);
+						do_rdb_op(computational_fd_send, computational_fd_recv, ctype_fd, mb, mb_oft, cur_len);
 						break;
 
 					default:

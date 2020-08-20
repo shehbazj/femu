@@ -2,6 +2,25 @@
 
 extern int zlib_me(FILE *ifstream, FILE *ofstream, int mode);
 
+void init_rdb_secondary(void)
+{
+	return;
+	/*
+	DB* db = nullptr;
+	Options options;
+	options.create_if_missing = false;
+	options.max_open_files = -1;
+	Status s = DB::OpenAsSecondary(options, kDBPath, kSecondaryPath, &db);
+	if (!s.ok()) {
+		fprintf(stderr, "[process %ld] Failed to open in secondary mode: %s\n",
+				my_pid, s.ToString().c_str());
+		assert(false);
+	} else {
+		fprintf(stdout, "[process %ld] Secondary instance starts\n", my_pid);
+	}
+	*/
+}
+
 void init_gzip(int mode)
 {
 	char *i,*o;

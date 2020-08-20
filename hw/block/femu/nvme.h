@@ -697,10 +697,13 @@ enum NvmeComputeDirectiveType {
     NVME_DIR_COMPUTE_COMPRESSION = 0x4,
     NVME_DIR_COMPUTE_DECOMPRESSION = 0x8,
 	NVME_DIR_COMPUTE_END = 0x10,
+	NVME_DIR_ROCKSDB_PUT = 0x20,
+	NVME_DIR_ROCKSDB_GET = 0x40,
 	// TODO add other compute operations here.
 };
 
 bool isCompression(enum NvmeComputeDirectiveType c);
+bool isRDB(enum NvmeComputeDirectiveType c);
 bool isVariableLength(enum NvmeComputeDirectiveType c);
 bool opTypeMismatch(enum NvmeComputeDirectiveType c, bool is_write);
 
