@@ -185,12 +185,28 @@ void zerr(int ret)
 /* compress or decompress from stdin to stdout */
 int main(int argc, char **argv)
 {
-    int ret;
+    	int ret;
 	unsigned long long start, end;
+	int s_gb;
+	size_t sz;
+	int fd;
 
 	FILE* ifstream, *ofstream;
 
-	ifstream = fopen(argv[1], "r");
+	if (argc != 2) {
+		printf("./host_compression <size in GB>\n");
+		exit (1);
+	}
+
+	sscanf(argv[1], "%d", &s_gb);
+
+	printf("creating file of size %d GB\n", s_gb);
+
+	char cmd[200];
+	sprintf (cmd, "dd if=10G of=IPFILE bs=1G count=%d", s_gb);	
+	system(cmd);
+
+	ifstream = fopen("IPFILE", "r");
 	if (ifstream == NULL) {
 		printf("inpipe failed\n");
 		exit(1);
@@ -200,12 +216,14 @@ int main(int argc, char **argv)
 		printf("outfile failed %s\n", strerror(errno));
 		exit(1);
 	}
-	
+		
+	/*
 	char c;
 	printf("SET CPU Limit\n");
 	printf("cpulimit -p <process> -l <limit>\n");
 	printf("Press key once CPU Limit has been set\n");
 	scanf("%c", &c);
+	*/
 
     SET_BINARY_MODE(ifstream);
     SET_BINARY_MODE(ofstream);

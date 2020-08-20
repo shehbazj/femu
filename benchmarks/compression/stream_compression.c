@@ -10,7 +10,6 @@ static __inline__ unsigned long long rdtsc(void)
 void compress(int inputfile_fd, int fd)
 {
 	int err;
-	off_t current_offset;
 	int ret;
 	int count = 0;
 	uint8_t *buf;
@@ -60,29 +59,30 @@ int main(int argc, char **argv)
 	int err, fd, i;
 	int inputfile_fd;
 	unsigned long long start, end;
-	
-	if (argc != 3) {
-		fprintf(stderr, "Usage: %s <inputfile> <device>\n", argv[0]);
+	int s_gb;
+
+	if (argc != 2) {
+		fprintf(stderr, "Usage: %s <size in GB>\n", argv[0]);
 		return 1;
 	}
+	sscanf(argv[1], "%d", &s_gb);
 
-	inputfile_fd = open(argv[1], IO_OPEN_OPTIONS);
+	char cmd[200];
+	sprintf (cmd, "dd if=10G of=IPFILE bs=1G count=%d", s_gb);	
+	system(cmd);
+
+	inputfile_fd = open("IPFILE", IO_OPEN_OPTIONS);
 	if (inputfile_fd < 0) {
 		goto perror;
 	}
 
-	perrstr = argv[2];
-	fd = open(argv[2], IO_OPEN_OPTIONS);
-	if (fd < 0){
-		goto perror;
-	}
-
+	/*
 	char c;
 	printf("SET CPU Limit\n");
 	printf("cpulimit -p <process> -l <limit>\n");
 	printf("Press key once CPU Limit has been set\n");
 	scanf("%c", &c);
-
+	*/
 
 	err = enable_stream_directive(fd);
 
