@@ -19,7 +19,7 @@ if [[ ! -e "$OSIMGF" ]]; then
 	exit
 fi
 
-sudo $FEMU_BUILDDIR/x86_64-softmmu/qemu-system-x86_64 \
+sudo PMEM_IS_PMEM_FORCE=1 $FEMU_BUILDDIR/x86_64-softmmu/qemu-system-x86_64 \
     -name "FEMU-blackbox-SSD" \
     -enable-kvm \
     -cpu host \
@@ -28,9 +28,12 @@ sudo $FEMU_BUILDDIR/x86_64-softmmu/qemu-system-x86_64 \
     -device virtio-scsi-pci,id=scsi0 \
     -device scsi-hd,drive=hd0 \
     -drive file=$OSIMGF,if=none,aio=native,cache=none,format=raw,id=hd0 \
-    -device femu,devsz_mb=1024,femu_mode=1,computation_mode=1,femu_ramdisk_backend=1 \
+    -device femu,devsz_mb=2048,femu_mode=1,computation_mode=1,femu_ramdisk_backend=1 \
     -net user,hostfwd=tcp::8080-:22 \
-    -net nic,model=virtio #\
+    -net nic,model=virtio \
+	-netdev tap,id=mynet0,ifname=tap0,script=no,downscript=no \
+	-device e1000,netdev=mynet0,mac=52:d7:53:cc:85:bb
+#\
 #    -qmp unix:./qmp-sock,server,nowait 2>&1 | tee log
 #    -drive file=$OSIMGF,if=none,aio=native,cache=none,format=qcow2,id=hd0 \
 
