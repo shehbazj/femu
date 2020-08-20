@@ -10,12 +10,17 @@ else
 	echo "rocksdb host directory already exists"
 fi
 
+echo "If mounted before, unmount.."
+sudo umount /mnt/rocksdb_host
 echo "mount nvme0n1 to rocksdb_host"
+sudo mount -t ext4 -o dax /dev/pmem0 /mnt/rocksdb_host
 
-sudo mount -o ro /dev/shm/memfile /mnt/rocksdb_host
+#while true; do
+#	ls -R /mnt/rocksdb_host
+#	sleep 1;
+#done
+echo "change ownership"
 
-#echo "change ownership"
+sudo chown -R shehbaz:shehbaz /mnt/rocksdb_host
 
-#sudo chown -R shehbaz:shehbaz /mnt/rocksdb_guest
-
-#echo "run secondary"
+echo "run secondary"

@@ -186,7 +186,7 @@ void RunSecondary() {
   ::signal(SIGINT, secondary_instance_sigint_handler);
   long my_pid = static_cast<long>(getpid());
   const std::string kSecondaryPath =
-      "/tmp/rocksdb_multi_processes_example_secondary";
+      "/mnt/rocksdb_host/rocksdb_multi_processes_example_secondary";
   // Create directory if necessary
   if (nullptr == opendir(kSecondaryPath.c_str())) {
     int ret =
@@ -208,7 +208,7 @@ void RunSecondary() {
   } else {
     fprintf(stdout, "[process %ld] Secondary instance starts\n", my_pid);
   }
-
+/*
   ReadOptions ropts;
   ropts.verify_checksums = true;
   ropts.total_order_seek = true;
@@ -301,10 +301,11 @@ void RunSecondary() {
   for (auto& thr : test_threads) {
     thr.join();
   }
+  
   delete iter;
-  delete iter1;
+  delete iter1; */
   delete db;
-  delete verification_db;
+//  delete verification_db;
 }
 
 int main(int argc, char** argv) {
