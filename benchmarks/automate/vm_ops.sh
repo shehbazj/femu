@@ -94,6 +94,7 @@ sudo cpulimit -p $QEMU_PID -l $CPU_LIMIT -b
 
 echo "Build Benchmark"
 
+ssh -p 8080 -t vm@localhost "make clean -C autobm/$OUTDIR/guest/$BMNAME >> autobm/$OUTDIR/guest/$BMNAME/guest_log"
 ssh -p 8080 -t vm@localhost "make -C autobm/$OUTDIR/guest/$BMNAME >> autobm/$OUTDIR/guest/$BMNAME/guest_log"
 
 # ssh and run a benchmark
