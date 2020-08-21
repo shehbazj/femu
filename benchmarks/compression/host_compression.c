@@ -251,7 +251,7 @@ int main(int argc, char **argv)
       ret = def(ifstream, ofstream, Z_DEFAULT_COMPRESSION);
 	end = rdtsc();
 
-        printf("cycles spent: %llu\n",end - start);
+        printf("CYCLE: %llu\n",end - start);
 //        ret = def(stdin, stdout, Z_DEFAULT_COMPRESSION);
         if (ret != Z_OK)
             zerr(ret);

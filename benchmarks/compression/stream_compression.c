@@ -126,7 +126,7 @@ int main(int argc, char **argv)
 	compress(inputfile_fd, fd);
 	end = rdtsc();
 
-        printf("cycles spent: %llu\n",end - start);
+        printf("CYCLE: %llu\n",end - start);
 
 //	testing if counting is disabled correctly.
 //	computational_read(&f, 0);
@@ -134,6 +134,10 @@ int main(int argc, char **argv)
 
    close(fd);
    close(inputfile_fd);
+
+	
+	sprintf (cmd, "rm IPFILE");	
+	system(cmd);
 	return 0;
 
 perror:
