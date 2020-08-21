@@ -9,6 +9,8 @@ if [[ $# -ne 1 ]]; then
 	exit
 fi
 
+echo $1
+
 config_file=$1
 source $config_file
 
@@ -141,3 +143,5 @@ if [[ $QEMU_PID ]]; then
 	echo "QEMU $QEMU_PID still active!"
 	exit 1
 fi
+
+cat hostdir/$OUTDIR/guest_log | grep -i CYCLE > hostdir/$OUTDIR/result
