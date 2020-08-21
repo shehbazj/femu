@@ -98,19 +98,19 @@ ssh -p 8080 -t vm@localhost "make -C autobm/$OUTDIR/guest/$BMNAME >> autobm/$OUT
 
 # ssh and run a benchmark
 
-echo "Run prereq Benchmark"
-
-
 num_scripts=${#PREP_SCRIPTS[@]}
-last_elem=`expr $num_scripts - 1`
-prev_param=0
 
-for i in `seq 0 $last_elem`
-do
-	SCRIPTNAME=$(get_prereq $i)
-	echo "RUN PREQ $SCRIPTNAME"
-	ssh -p 8080 -t vm@localhost "sudo ./autobm/$OUTDIR/guest/$BMNAME/$SCRIPTNAME >> autobm/$OUTDIR/guest/guest_log"
-done
+if [[ $num_scripts -ne 0 ]]; then
+	echo "Run prereq Benchmark"
+	last_elem=`expr $num_scripts - 1`
+	prev_param=0
+	for i in `seq 0 $last_elem`
+	do
+		SCRIPTNAME=$(get_prereq $i)
+		echo "RUN PREQ $SCRIPTNAME"
+		ssh -p 8080 -t vm@localhost "sudo ./autobm/$OUTDIR/guest/$BMNAME/$SCRIPTNAME >> autobm/$OUTDIR/guest/guest_log"
+	done
+fi
 
 echo "Run test Benchmark"
 
