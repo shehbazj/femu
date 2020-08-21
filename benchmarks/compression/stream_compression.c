@@ -1,4 +1,5 @@
 #include "../stream_common/common.h"
+#include <stdbool.h>
 
 static __inline__ unsigned long long rdtsc(void)
 {
@@ -53,6 +54,16 @@ void compress(int inputfile_fd, int fd)
 	free(buf);
 }
 
+bool check_root()
+{
+	if (geteuid() == 0) {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
 int main(int argc, char **argv)
 {
 	static const char *perrstr;
@@ -65,17 +76,29 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Usage: %s <size in GB>\n", argv[0]);
 		return 1;
 	}
+
+	if (check_root() == false) {
+		printf("Please run as sudo\n");
+		exit(1);
+	}
+
 	sscanf(argv[1], "%d", &s_gb);
 
+	printf("Creating IP FILE of size %d from 10G file\n", s_gb);
 	char cmd[200];
-	sprintf (cmd, "dd if=10G of=IPFILE bs=1G count=%d", s_gb);	
+	sprintf (cmd, "dd if=/home/vm/10G of=IPFILE bs=1G count=%d", s_gb);	
 	system(cmd);
+	printf("IPFile Created\n");
 
 	inputfile_fd = open("IPFILE", IO_OPEN_OPTIONS);
 	if (inputfile_fd < 0) {
 		goto perror;
 	}
-
+	
+	fd = open("/dev/nvme0n1", O_RDWR);
+	if (fd < 0) {
+		goto perror;
+	}
 	/*
 	char c;
 	printf("SET CPU Limit\n");

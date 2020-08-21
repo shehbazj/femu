@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include "zlib.h"
 #include <errno.h>
+#include <stdbool.h>
 
 #if defined(MSDOS) || defined(OS2) || defined(WIN32) || defined(__CYGWIN__)
 #  include <fcntl.h>
@@ -182,6 +183,16 @@ void zerr(int ret)
     }
 }
 
+bool check_root()
+{
+	if (geteuid() == 0) {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
 /* compress or decompress from stdin to stdout */
 int main(int argc, char **argv)
 {
@@ -197,13 +208,17 @@ int main(int argc, char **argv)
 		printf("./host_compression <size in GB>\n");
 		exit (1);
 	}
-
+	
+	if (check_root() == false) {
+		printf("Please run as sudo\n");
+		exit(1);
+	}
 	sscanf(argv[1], "%d", &s_gb);
 
 	printf("creating file of size %d GB\n", s_gb);
 
 	char cmd[200];
-	sprintf (cmd, "dd if=10G of=IPFILE bs=1G count=%d", s_gb);	
+	sprintf (cmd, "dd if=/home/vm/10G of=IPFILE bs=1G count=%d", s_gb);	
 	system(cmd);
 
 	ifstream = fopen("IPFILE", "r");
