@@ -1,0 +1,3 @@
+source compression_2G_host
+
+echo $BMNAME

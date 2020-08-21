@@ -68,15 +68,15 @@ echo "Wait for VM to Boot"
 sleep 30
 
 # wait and copy path to VM
-echo "Copy guest scripts from $BMNAME to VM"
+echo "Copy guest scripts from $BM to VM"
 
 echo "create guest directory"
-ssh -p 8080 -t vm@localhost "mkdir -p autobm/$OUTDIR/guest"
+ssh -p 8080 -t vm@localhost "mkdir -p autobm/$OUTDIR/guest/$BMNAME"
 
 echo "dir creation $?"
 
 echo "copy bm to guest directory"
-scp -P 8080 -r $FEMU/benchmarks/$BMNAME vm@localhost:autobm/$OUTDIR/guest/
+scp -P 8080 -r $FEMU/benchmarks/$BM/* vm@localhost:autobm/$OUTDIR/guest/$BMNAME
 scp -P 8080 -r $FEMU/benchmarks/stream_common vm@localhost:autobm/$OUTDIR/guest/
 
 echo "copy $?"
@@ -94,13 +94,14 @@ sudo cpulimit -p $QEMU_PID -l $CPU_LIMIT -b
 
 echo "Build Benchmark"
 
-ssh -p 8080 -t vm@localhost "make -C autobm/$OUTDIR/guest/$BMNAME >> autobm/$OUTDIR/guest/guest_log"
+ssh -p 8080 -t vm@localhost "make -C autobm/$OUTDIR/guest/$BMNAME >> autobm/$OUTDIR/guest/$BMNAME/guest_log"
 
 # ssh and run a benchmark
 
 num_scripts=${#PREP_SCRIPTS[@]}
 
-if [[ $num_scripts -ne 0 ]]; then
+if [ $num_scripts -ne 0 ]; then
+	echo "num scripts = $num_scripts"
 	echo "Run prereq Benchmark"
 	last_elem=`expr $num_scripts - 1`
 	prev_param=0
@@ -108,17 +109,17 @@ if [[ $num_scripts -ne 0 ]]; then
 	do
 		SCRIPTNAME=$(get_prereq $i)
 		echo "RUN PREQ $SCRIPTNAME"
-		ssh -p 8080 -t vm@localhost "sudo ./autobm/$OUTDIR/guest/$BMNAME/$SCRIPTNAME >> autobm/$OUTDIR/guest/guest_log"
+		ssh -p 8080 -t vm@localhost "sudo ./autobm/$OUTDIR/guest/$BMNAME/$SCRIPTNAME >> autobm/$OUTDIR/guest/$BMNAME/guest_log"
 	done
 fi
 
 echo "Run test Benchmark"
 
-ssh -p 8080 -t vm@localhost "sudo ./autobm/$OUTDIR/guest/$BMNAME/$TESTSCRIPT ${PARAMS[@]} >> autobm/$OUTDIR/guest/guest_log"
+ssh -p 8080 -t vm@localhost "sudo ./autobm/$OUTDIR/guest/$BMNAME/$TESTSCRIPT ${PARAMS[@]} >> autobm/$OUTDIR/guest/$BMNAME/guest_log"
 
 echo "Copy results into outdir"
 
-scp -P 8080 vm@localhost:autobm/$OUTDIR/guest/guest_log hostdir/$OUTDIR/
+scp -P 8080 vm@localhost:autobm/$OUTDIR/guest/$BMNAME/guest_log hostdir/$OUTDIR/
 
 echo "Kill CPULimits App if required"
 
