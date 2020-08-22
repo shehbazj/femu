@@ -822,7 +822,6 @@ static void nvme_clear_ctrl(FemuCtrl *n, bool shutdown)
     }
 
 //	printf("%s():ones_counter = %lu\n", __func__,ones_counter);
-
     if (shutdown) {
         femu_debug("%s,clear_guest_notifier\n", __func__);
         nvme_clear_guest_notifier(n);
