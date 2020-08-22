@@ -20,6 +20,8 @@
 #include <errno.h>
 #include <stdbool.h>
 
+#define RAMDISK
+
 #if defined(MSDOS) || defined(OS2) || defined(WIN32) || defined(__CYGWIN__)
 #  include <fcntl.h>
 #  include <io.h>
@@ -218,20 +220,26 @@ int main(int argc, char **argv)
 	printf("creating file of size %d GB\n", s_gb);
 
 	char cmd[200];
-	sprintf (cmd, "dd if=/home/vm/10G of=IPFILE bs=1G count=%d", s_gb);	
+	char infile[100];
+#ifdef RAMDISK
+	strcpy (infile, "/mnt/ramdisk/IPFILE");
+#else
+	strcpy (infile, "IPFILE");
+#endif
+	sprintf (cmd, "dd if=/home/vm/10G of=%s bs=1G count=%d", infile, s_gb);
 	system(cmd);
 
-	ifstream = fopen("IPFILE", "r");
+	ifstream = fopen("/mnt/ramdisk/IPFILE", "r");
 	if (ifstream == NULL) {
 		printf("inpipe failed\n");
 		exit(1);
 	}
 	ofstream = fopen("/dev/nvme0n1", "w");
 	if (ofstream == NULL) {
-		printf("outfile failed %s\n", strerror(errno));
+		printf("infile failed %s\n", strerror(errno));
 		exit(1);
 	}
-		
+
 	/*
 	char c;
 	printf("SET CPU Limit\n");
@@ -240,15 +248,15 @@ int main(int argc, char **argv)
 	scanf("%c", &c);
 	*/
 
-    SET_BINARY_MODE(ifstream);
-    SET_BINARY_MODE(ofstream);
+	SET_BINARY_MODE(ifstream);
+	SET_BINARY_MODE(ofstream);
 
     /* avoid end-of-line conversions */
 //    SET_BINARY_MODE(stdin);
 //    SET_BINARY_MODE(stdout);
 
 	start = rdtsc();	
-      ret = def(ifstream, ofstream, Z_DEFAULT_COMPRESSION);
+	ret = def(ifstream, ofstream, Z_DEFAULT_COMPRESSION);
 	end = rdtsc();
 
         printf("CYCLE: %llu\n",end - start);
@@ -259,6 +267,7 @@ int main(int argc, char **argv)
 	fclose(ifstream);
 	fclose(ofstream);
 
+	sprintf (cmd, "rm %s", infile);
+	system(cmd);
         return ret;
-
 }

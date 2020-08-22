@@ -1,6 +1,7 @@
 #include "../stream_common/common.h"
 #include <stdbool.h>
 
+#define RAMDISK 1
 static __inline__ unsigned long long rdtsc(void)
 {
   unsigned hi, lo;
@@ -86,11 +87,17 @@ int main(int argc, char **argv)
 
 	printf("Creating IP FILE of size %d from 10G file\n", s_gb);
 	char cmd[200];
-	sprintf (cmd, "dd if=/home/vm/10G of=IPFILE bs=1G count=%d", s_gb);	
+	char infile[100];
+#ifdef RAMDISK
+	strcpy (infile, "/mnt/ramdisk/IPFILE");
+#else
+	strcpy (infile, "IPFILE");
+#endif
+	sprintf (cmd, "dd if=/home/vm/10G of=%s bs=1G count=%d", infile, s_gb);
 	system(cmd);
 	printf("IPFile Created\n");
 
-	inputfile_fd = open("IPFILE", IO_OPEN_OPTIONS);
+	inputfile_fd = open(infile, O_RDONLY);
 	if (inputfile_fd < 0) {
 		goto perror;
 	}
@@ -136,7 +143,7 @@ int main(int argc, char **argv)
    close(inputfile_fd);
 
 	
-	sprintf (cmd, "rm IPFILE");	
+	sprintf (cmd, "rm %s", infile);
 	system(cmd);
 	return 0;
 
