@@ -553,7 +553,10 @@ static uint16_t nvme_rw(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
 	}
     }
 
-	enum NvmeComputeDirectiveType computetype = ns->id_dir->dir_enable[1];
+	enum NvmeComputeDirectiveType computetype = NVME_DIR_COMPUTE_NONE;
+
+	if (n->computation_mode == FEMU_COMPUTE_ON)
+        computetype = ns->id_dir->dir_enable[1];
 
     req->slba = slba;
     req->meta_size = 0;
