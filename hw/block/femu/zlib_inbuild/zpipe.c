@@ -26,7 +26,7 @@
 #  define SET_BINARY_MODE(file)
 #endif
 
-#define CHUNK 16384
+#define CHUNK 4096
 //#define CHUNK 4096
 
 int def(FILE *source, FILE *dest, int level);

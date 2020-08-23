@@ -19,7 +19,7 @@ Directive Types:
 	for `directive_send_command` `doper=01h`, dw12 - 15:08 DTYPE to enable or disable. 00 ENDIR enable directive or disable directive.
 
 2.	01 - stream directive.
-	- `directive_recieve_command` 
+	- `directive_recieve_command`
 		`doper=01h` `return_parameters` operation - host knows parameters associated with stream resources. `dspec` is ignored. return parameters contain
 		1. NVMe Subsystem Fields
 		MSL (Maximum Streams Limit), NVM Subsystem Streams Available (NSSA), Streams Open (NSSO), Stream Capability (NSSC).
@@ -42,4 +42,3 @@ Directive Types:
 	- `directive_send_command`
 		`doper=01h` - release identifyer 
 		`doper=02h` - release resources
-
