@@ -1,7 +1,6 @@
 #include "../stream_common/common.h"
 #include <stdbool.h>
 
-#define RAMDISK 1
 static __inline__ unsigned long long rdtsc(void)
 {
   unsigned hi, lo;

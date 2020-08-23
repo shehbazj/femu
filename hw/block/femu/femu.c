@@ -630,10 +630,10 @@ static uint16_t nvme_rw(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     assert((nlb << data_shift) == req->qsg.size);
 
     if (req->is_write) {
-       femu_debug("%s, opcode:%#x, offset:%#lx, size:%#lx, dtype:%#x, dspec:%#x\n",
-               __func__, rw->opcode, data_offset, data_size, dtype, dspec);
+     //  femu_debug("%s, opcode:%#x, offset:%#lx, size:%#lx, dtype:%#x, dspec:%#x\n",
+     //          __func__, rw->opcode, data_offset, data_size, dtype, dspec);
        if (dtype) {
-		printf("dtype detected %d\n", dtype);
+//		printf("dtype detected %d\n", dtype);
           nvme_update_str_stat(n, ns, dspec);
 	}
     }

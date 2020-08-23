@@ -1,6 +1,8 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+//#define RAMDISK 1
+
 static __inline__ unsigned long long rdtsc(void)
 {
   unsigned hi, lo;

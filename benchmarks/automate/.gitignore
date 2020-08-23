@@ -1,2 +1,6 @@
 bootlog
 hostdir/*
+computational_pipe_recv
+computational_pipe_send
+compression_pipe_recv
+compression_pipe_send
