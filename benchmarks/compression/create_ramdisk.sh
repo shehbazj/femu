@@ -1,4 +1,4 @@
-if [[ "$#" -ne 1 ]]; then
+if [[ $# -ne 1 ]]; then
 	"Usage: ./create_ramdisk.sh <size>"
 	exit 1
 fi
