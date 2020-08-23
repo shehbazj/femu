@@ -3,9 +3,9 @@ BASEDIR=cpulimit
 rm -rf $BASEDIR
 mkdir -p $BASEDIR
 # generate NSC benchmark
-FILESIZE=10
+FILESIZE=2
 
-for CPULIMIT in `seq 50 10 100`
+for CPULIMIT in `seq 60 20 100`
 do
 echo "FILESIZE=$FILESIZE
 BMNAME=compression.$CPULIMIT.percent_nsc
@@ -28,7 +28,7 @@ done
 
 # generate Host benchmark
 
-for CPULIMIT in `seq 50 10 100`
+for CPULIMIT in `seq 60 20 100`
 do
 echo "FILESIZE=$FILESIZE
 BMNAME=compression.$CPULIMIT.percent_host
