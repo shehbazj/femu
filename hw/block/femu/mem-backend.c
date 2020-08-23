@@ -180,7 +180,7 @@ uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_re
 
         struct timespec t;
         t.tv_sec = 0;
-        t.tv_nsec = 1;
+        t.tv_nsec = 0;
         sigset_t origmask;
 
         int rc;
