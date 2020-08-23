@@ -644,7 +644,6 @@ static uint16_t nvme_rw(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
 	        computetype = ns->id_dir->dir_enable[1];
 	//printf("%s():compute type = %d\n", __func__,computetype);
 
-
     req->slba = slba;
     req->meta_size = 0;
     req->status = NVME_SUCCESS;
@@ -826,7 +825,6 @@ static void nvme_clear_ctrl(FemuCtrl *n, bool shutdown)
     }
 
 //	printf("%s():ones_counter = %lu\n", __func__,ones_counter);
-
     if (shutdown) {
         femu_debug("%s,clear_guest_notifier\n", __func__);
         nvme_clear_guest_notifier(n);

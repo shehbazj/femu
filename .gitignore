@@ -37,6 +37,7 @@
 /qemu-doc.txt
 /qemu-img
 /qemu-nbd
+/qemu-edid
 /qemu-options.def
 /qemu-options.texi
 /qemu-img-cmds.texi
@@ -131,3 +132,14 @@ trace-dtrace-root.dtrace
 trace-ust-all.h
 trace-ust-all.c
 build-femu/
+/ui/input-keymap*
+/pc-bios/edk2*
+/pc-bios/optionrom/
+vhost-user-input
+/roms/seabios/
+/roms/vgabios/
+benchmarks/counting/host_count
+benchmarks/counting/nsc_count
+benchmarks/counting/stream_count
+benchmarks/counting/write_ones
+scsi/qemu-pr-helper

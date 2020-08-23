@@ -83,6 +83,7 @@ uint64_t do_pointer_chase(int *computational_fd_send_ptr, int *computational_fd_
 
 	enum NvmeComputeDirectiveType computetype = NVME_DIR_COMPUTE_POINTER_CHASE;
 	ret = write(ctype_fd, &computetype , sizeof(uint8_t));
+
 	if (ret < 0) {
 		printf("write on pipe failed %s\n", strerror(errno));
 		exit(1);
@@ -110,6 +111,7 @@ uint64_t do_pointer_chase(int *computational_fd_send_ptr, int *computational_fd_
 			if (dma_memory_rw(as, *cur_addr, mb + new_offset, cur_len, dir)) {
 				error_report("FEMU: dma_memory_rw error");
 			}
+
 			ret = write(ctype_fd, &computetype , sizeof(enum NvmeComputeDirectiveType));
 			if (ret < 0) {
 				printf("write on pipe failed %s\n", strerror(errno));
@@ -376,7 +378,6 @@ uint64_t do_count(int *computational_fd_send_ptr, int *computational_fd_recv_ptr
 
 	int computational_fd_send = *computational_fd_send_ptr;
 	int computational_fd_recv = *computational_fd_recv_ptr;
-
 	if (ret < 0) {
 		printf("write on pipe failed %s\n", strerror(errno));
 		exit(1);
