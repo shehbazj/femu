@@ -124,24 +124,18 @@ echo "Copy results into outdir"
 
 scp -P 8080 vm@localhost:autobm/$OUTDIR/guest/$BMNAME/guest_log hostdir/$OUTDIR/
 
-echo "Kill CPULimits App if required"
-
-sudo kill -9 `pgrep cpulimit` 2> /dev/null
-
 echo "Shutdown VM"
 shutdown_vm
 
 
-echo "Kill instance and wait for 10 seconds"
+echo "Kill instance"
 sudo kill -9 `pgrep qemu` 2> /dev/null
 
-sleep 10
 echo "Check for qemu instance"
 QEMU_PID=`pgrep qemu`
 
 if [[ $QEMU_PID ]]; then
 	echo "QEMU $QEMU_PID still active!"
-	exit 1
 fi
 
 cat hostdir/$OUTDIR/guest_log | grep -i CYCLE > hostdir/$OUTDIR/result
