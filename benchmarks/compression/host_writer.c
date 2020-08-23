@@ -26,7 +26,6 @@
 #include <unistd.h>
 
 #define BLOCK_SIZE 4096
-#define RAMDISK
 
 bool check_root()
 {
@@ -100,9 +99,11 @@ int main(int argc, char **argv)
 	scanf("%c", &c);
 	*/
 
+	/*
 	char c;
 	printf("Please run ./host_zlib if not running already\n");
 	scanf("%c", &c);
+	*/
 
 	start = rdtsc();	
 	// read data from disk into buffer

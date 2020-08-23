@@ -19,8 +19,8 @@
 #include "zlib.h"
 #include <errno.h>
 #include <stdbool.h>
-
-#define RAMDISK
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #if defined(MSDOS) || defined(OS2) || defined(WIN32) || defined(__CYGWIN__)
 #  include <fcntl.h>
@@ -216,6 +216,13 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
+	ret = mkfifo("/tmp/host_compression_pipe", 0666);
+        if (ret < 0 ) {
+                printf("Creating Pipe Failed\n");
+        }else { 
+                printf("Pipe Created\n");
+        }
+
 	char infile[100];
 	strcpy (infile, "/tmp/host_compression_pipe");
 
@@ -256,6 +263,8 @@ int main(int argc, char **argv)
 
 	fclose(ifstream);
 	fclose(ofstream);
+
+	unlink("/tmp/host_compression_pipe");
 
         return ret;
 }
