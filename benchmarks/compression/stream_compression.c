@@ -35,7 +35,7 @@ void compress(int inputfile_fd, int fd)
 		exit(1);
 	}
 	while (ret > 0) {
-		printf("writing data block %d bytes %d\n", count++, ret);
+//		printf("writing data block %d bytes %d\n", count++, ret);
 		err = write(fd, buf, ret);
 		if (err < 0) {
 			printf("compression failed\n");
