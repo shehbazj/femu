@@ -150,7 +150,7 @@ void computational_process (void)
 
         struct timespec t;
         t.tv_sec = 0;
-        t.tv_nsec = 1;
+        t.tv_nsec = 0;
         sigset_t origmask;
 	int nfds = 2;
 
