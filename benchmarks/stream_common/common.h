@@ -45,12 +45,14 @@ struct sdm {
    0x801 = 0b 1000 0000 0001 this enables pointer chase (dw12 >> 10 = 02)
 */
 enum ComputationalDirectiveType {
-	POINTER_CHASE_ENABLE  = 0x801,
-	POINTER_CHASE_DISABLE = 0x800,
 	COUNTING_ENABLE		= 0x401,
 	COUNTING_DISABLE	= 0x400,
+	POINTER_CHASE_ENABLE  = 0x801,
+	POINTER_CHASE_DISABLE = 0x800,
 	COMPRESSION_ENABLE	= 0x1001,
 	COMPRESSION_DISABLE	= 0x1000,
+	JBD2_CHECKSUM_ENABLE	= 0x2001,
+	JBD2_CHECKSUM_DISABLE	= 0x2000,
 };
 
 int nvme_dir_send(int fd, __u32 nsid, __u16 dspec, __u8 dtype, __u8 doper,
