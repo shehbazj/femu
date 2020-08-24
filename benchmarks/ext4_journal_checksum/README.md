@@ -1,8 +1,8 @@
-Mounting a separate journal device:
+`setup_journal.sh`
 
-Create a journal device
-`mke2fs -O journal_dev /dev/nvme0n1`
+Creating and mounting a separate journal device
 
-Point the journal to the file system device
-`mke2fs -t ext4 -J device=/dev/nvme0n1`/dev/sdb`
+`create_append_sync.c`
 
+Minimal example of creating a file and writing to the file.
+sync is called to write changes to the journal.
