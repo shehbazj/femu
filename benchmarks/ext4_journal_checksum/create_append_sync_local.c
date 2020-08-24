@@ -46,7 +46,7 @@ int main()
 		exit(1);
 	}
 
-	strcpy(cmd, "./setup_journal.sh");
+	strcpy(cmd, "./setup_local.sh");
 	system(cmd);
 
 
@@ -55,7 +55,7 @@ int main()
 	if (fd < 0) {
 		goto error;
 	}
-
+	
 	printf("sync\n");
 	ret = fsync(fd);
 	if (ret < 0) {goto error;}
