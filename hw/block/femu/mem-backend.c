@@ -21,6 +21,9 @@ uint64_t ones_counter;
 uint64_t do_pointer_chase(int *computational_fd_send, int *computational_fd_recv, int ctype_fd, void *mb,
 		uint64_t mb_oft, dma_addr_t cur_len, AddressSpace *as, dma_addr_t *cur_addr, uint32_t read_delay);
 
+uint64_t do_jbd2_checksum(int *computational_fd_send, int *computational_fd_recv, int ctype_fd, void *mb,
+		uint64_t mb_oft, dma_addr_t cur_len, AddressSpace *as, dma_addr_t *cur_addr, uint32_t read_delay);
+
 uint64_t do_count(int *computational_fd_send, int *computational_fd_recv, int ctype_fd, void *mb , uint64_t mb_oft, dma_addr_t cur_len);
 
 uint64_t do_compression(int *computational_fd_send, int *computational_fd_recv, int ctype_fd, void *mb, uint64_t mb_oft,
@@ -68,6 +71,47 @@ inline static void add_delay(uint32_t micro_seconds) {
 	current_time = cpu_get_host_ticks();
 	req_time = current_time + (micro_seconds);
 	while( cpu_get_host_ticks()  < req_time);
+}
+
+uint64_t do_jbd2_checksum(int *computational_fd_send_ptr, int *computational_fd_recv_ptr, int ctype_fd, void *mb, uint64_t mb_oft,
+	dma_addr_t cur_len, AddressSpace *as, dma_addr_t *cur_addr, uint32_t write_delay)
+{
+//	int ret;
+//       	int wret;
+	DMADirection dir = DMA_DIRECTION_TO_DEVICE;
+	uint8_t queue_buffer[BLOCK_SIZE];
+//	uint8_t checksum_buffer[BLOCK_SIZE];
+
+	//int computational_fd_send = *computational_fd_send_ptr;
+	//int computational_fd_recv = *computational_fd_recv_ptr;
+	// copy data from send queue to an in memory buffer.
+
+	if (dma_memory_rw(as, *cur_addr, queue_buffer, cur_len, dir)) {
+		error_report("FEMU: dma_memory_rw error");
+	}
+/*
+	debug_print("%s(): writing to compression fd now\n", __func__);
+
+	// then send the write to the computational media
+	debug_print("%s():writing to computational FD %d\n",__func__, computational_fd_send);
+	wret = write(computational_fd_send, queue_buffer, cur_len);
+	if (wret < 0) {
+		printf("%s():write to computational fd send failed\n", __func__);
+		exit(1);
+	}
+	debug_print("%s(): completed writing to compression fd\n", __func__);
+
+	ret = read(computational_fd_recv, checksum_buffer, BLOCK_SIZE);
+	debug_print("received checksum buffer\n");
+	if (ret < 0) {
+		printf("read from pipe failed %s\n", strerror(errno));	
+		exit(1);
+	}
+*/
+	add_delay(write_delay);
+//	memcpy(mb + mb_oft, checksum_buffer, BLOCK_SIZE);
+	memcpy(mb + mb_oft, queue_buffer, BLOCK_SIZE);
+	return 0;
 }
 
 uint64_t do_pointer_chase(int *computational_fd_send_ptr, int *computational_fd_recv_ptr, int ctype_fd, void *mb, uint64_t mb_oft, 
@@ -423,6 +467,7 @@ uint64_t do_cleanup(int *computational_fd_send_ptr, int *computational_fd_recv_p
 	return ret;
 }
 
+/* IO type (read/write) does not correspond to the type of computation */
 bool opTypeMismatch(enum NvmeComputeDirectiveType c, bool is_write)
 {
 	if (c == NVME_DIR_COMPUTE_COUNTER || c == NVME_DIR_COMPUTE_POINTER_CHASE || c == NVME_DIR_COMPUTE_DECOMPRESSION) {
@@ -432,14 +477,18 @@ bool opTypeMismatch(enum NvmeComputeDirectiveType c, bool is_write)
 			return false;
 		}
 	} else if (c == NVME_DIR_COMPUTE_COMPRESSION) {
-//printf("%s(): compute dir type %d is_write %d\n", __func__, c, is_write);
+		if (is_write) {
+			return false;
+		} else {
+			return true;
+		}
+	} else if (c == NVME_DIR_COMPUTE_JBD2_CHECKSUM) {
 		if (is_write) {
 			return false;
 		} else {
 			return true;
 		}
 	}
-//	printf("%s(): compute dir type %d is_write %d\n", __func__, c, is_write);
 	return true;
 }
 
@@ -472,18 +521,18 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
         cur_addr = qsg->sg[sg_cur_index].base + sg_cur_byte;
         cur_len = qsg->sg[sg_cur_index].len - sg_cur_byte;
 
-	// make first I/O irrespective of compute mode.
-	if (is_write) {
-		add_delay(flash_write_delay);
-	} else {
-		add_delay(flash_read_delay);
-	}
 	// for compression and decompression, do not do the first I/O.
 	// XXX change this to stream based workloads, or workloads that require writes.
 	// even for writes, we do not perform the first I/O.
 	// The first I/O is only involved for reads, OR for cases where no computation needs
 	// to take place.
-        if (!isCompression(computetype)) {
+        if (!isCompression(computetype) && !isJBD2_Checksum(computetype)) {
+		// make first I/O irrespective of compute mode.
+		if (is_write) {
+			add_delay(flash_write_delay);
+		} else {
+			add_delay(flash_read_delay);
+		}
 		if(dma_memory_rw(qsg->as, cur_addr, mb + mb_oft, cur_len, dir)) {
 			error_report("FEMU: dma_memory_rw error");
 		}
@@ -578,6 +627,23 @@ int femu_rw_mem_backend_bb(struct femu_mbe *mbe, QEMUSGList *qsg,
 						ret = do_compression(computational_fd_send, computational_fd_recv, ctype_fd, mb, mb_oft, 
 								cur_len, qsg->as, &cur_addr, flash_write_delay, flash_read_delay, computetype);
 						mbe->var_offset += ret;
+						break;
+					
+					case NVME_DIR_COMPUTE_JBD2_CHECKSUM:
+						debug_print("jbd2 checksum\n");
+						if (prev_compute == NVME_DIR_COMPUTE_NONE) {
+							ret = write(ctype_fd, &computetype , sizeof(uint8_t));
+							if (ret < 0) {
+								printf("write on pipe failed %s\n", strerror(errno));
+								exit(1);
+							}
+						}
+						prev_compute = computetype;
+						ret = do_jbd2_checksum(computational_fd_send, computational_fd_recv, ctype_fd, mb, mb_oft, 
+							cur_len, qsg->as, &cur_addr, flash_write_delay);
+						if (ret < 0) {
+							printf("Error occured while computing checksum %s\n", strerror(ret));
+						}
 						break;
 
 					default:

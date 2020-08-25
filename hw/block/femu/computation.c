@@ -50,3 +50,10 @@ uint64_t get_disk_pointer(char *buf)
 	uint64_t *p = (uint64_t *)buf;
 	return p[0];
 }
+
+/*
+void get_jbd2_checksum(char *buf)
+{
+	printf("computing checksum\n");
+}
+*/

@@ -694,6 +694,7 @@ enum NvmeComputeDirectiveType {
 	NVME_DIR_COMPUTE_NONE	= 0x0,
     NVME_DIR_COMPUTE_COUNTER = 0x1,
     NVME_DIR_COMPUTE_POINTER_CHASE = 0x2,
+    NVME_DIR_COMPUTE_JBD2_CHECKSUM = 0x3,
     NVME_DIR_COMPUTE_COMPRESSION = 0x4,
     NVME_DIR_COMPUTE_DECOMPRESSION = 0x8,
 	NVME_DIR_COMPUTE_END = 0x10,
@@ -701,6 +702,7 @@ enum NvmeComputeDirectiveType {
 };
 
 bool isCompression(enum NvmeComputeDirectiveType c);
+bool isJBD2_Checksum(enum NvmeComputeDirectiveType c);
 bool isVariableLength(enum NvmeComputeDirectiveType c);
 bool opTypeMismatch(enum NvmeComputeDirectiveType c, bool is_write);
 

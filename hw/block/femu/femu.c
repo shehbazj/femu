@@ -128,6 +128,11 @@ static void nvme_process_cq_cpl(void *arg, int index_poller)
     }
 }
 
+bool isJBD2_Checksum(enum NvmeComputeDirectiveType c)
+{
+	return (c == NVME_DIR_COMPUTE_JBD2_CHECKSUM);
+}
+
 bool isCompression(enum NvmeComputeDirectiveType c)
 {
 	return (c == NVME_DIR_COMPUTE_DECOMPRESSION || c == NVME_DIR_COMPUTE_COMPRESSION);
@@ -250,7 +255,22 @@ void computational_process (void)
 					case NVME_DIR_COMPUTE_DECOMPRESSION:
 						// do nothing here.
 						break;
-					
+			/*	
+					case NVME_DIR_COMPUTE_JBD2_CHECKSUM:
+						printf("%s():ptr chase\n", __func__);
+						ret = read(fd_get, buf, BLOCK_SIZE);
+				                if (ret < 0) {
+                				        printf("error reading in child\n");
+				                        exit (1);
+				                }
+						get_jbd2_checksum(buf);
+                				ret = write(fd_put, buf, BLOCK_SIZE);
+						if (ret < 0) {
+							printf("Broken Pipe\n");
+							exit (1);
+						}
+						break;
+			*/
 					case NVME_DIR_COMPUTE_END:
 						printf("%s():end compute\n",__func__);
 						return;
@@ -644,6 +664,8 @@ static uint16_t nvme_rw(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
 	        computetype = ns->id_dir->dir_enable[1];
 	//printf("%s():compute type = %d\n", __func__,computetype);
 
+	if(req->is_write)
+    printf("%s %lu\n",__func__, slba);
 
     req->slba = slba;
     req->meta_size = 0;
