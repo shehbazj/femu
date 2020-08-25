@@ -23,12 +23,12 @@ sudo $FEMU_BUILDDIR/x86_64-softmmu/qemu-system-x86_64 \
     -name "FEMU-blackbox-SSD" \
     -enable-kvm \
     -cpu host \
-    -smp 4 \
-    -m 12G \
+    -smp 2 \
+    -m 4G \
     -device virtio-scsi-pci,id=scsi0 \
     -device scsi-hd,drive=hd0 \
     -drive file=$OSIMGF,if=none,aio=native,cache=none,format=raw,id=hd0 \
-    -device femu,devsz_mb=10240,femu_mode=1,computation_mode=1,flash_read_latency=0,flash_write_latency=10000 \
+    -device femu,devsz_mb=1024,femu_mode=1,computation_mode=1 \
     -net user,hostfwd=tcp::8080-:22 \
     -net nic,model=virtio #\
 #    -qmp unix:./qmp-sock,server,nowait 2>&1 | tee log

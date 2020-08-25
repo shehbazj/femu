@@ -1,9 +1,16 @@
 #include "../stream_common/common.h"
+#include <stdbool.h>
+
+static __inline__ unsigned long long rdtsc(void)
+{
+  unsigned hi, lo;
+  __asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
+  return ( (unsigned long long)lo)|( ((unsigned long long)hi)<<32 );
+}
 
 void compress(int inputfile_fd, int fd)
 {
 	int err;
-	off_t current_offset;
 	int ret;
 	int count = 0;
 	uint8_t *buf;
@@ -28,7 +35,7 @@ void compress(int inputfile_fd, int fd)
 		exit(1);
 	}
 	while (ret > 0) {
-		printf("writing data block %d bytes %d\n", count++, ret);
+//		printf("writing data block %d bytes %d\n", count++, ret);
 		err = write(fd, buf, ret);
 		if (err < 0) {
 			printf("compression failed\n");
@@ -47,27 +54,64 @@ void compress(int inputfile_fd, int fd)
 	free(buf);
 }
 
+bool check_root()
+{
+	if (geteuid() == 0) {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
 int main(int argc, char **argv)
 {
 	static const char *perrstr;
 	int err, fd, i;
 	int inputfile_fd;
-	
-	if (argc != 3) {
-		fprintf(stderr, "Usage: %s <inputfile> <device>\n", argv[0]);
+	unsigned long long start, end;
+	int s_gb;
+
+	if (argc != 2) {
+		fprintf(stderr, "Usage: %s <size in GB>\n", argv[0]);
 		return 1;
 	}
 
-	inputfile_fd = open(argv[1], IO_OPEN_OPTIONS);
+	if (check_root() == false) {
+		printf("Please run as sudo\n");
+		exit(1);
+	}
+
+	sscanf(argv[1], "%d", &s_gb);
+
+	printf("Creating IP FILE of size %d from 10G file\n", s_gb);
+	char cmd[200];
+	char infile[100];
+#ifdef RAMDISK
+	strcpy (infile, "/mnt/ramdisk/IPFILE");
+#else
+	strcpy (infile, "IPFILE");
+#endif
+	sprintf (cmd, "dd if=/home/vm/10G of=%s bs=1G count=%d", infile, s_gb);
+	system(cmd);
+	printf("IPFile Created\n");
+
+	inputfile_fd = open(infile, O_RDONLY);
 	if (inputfile_fd < 0) {
 		goto perror;
 	}
-
-	perrstr = argv[2];
-	fd = open(argv[2], IO_OPEN_OPTIONS);
-	if (fd < 0){
+	
+	fd = open("/dev/nvme0n1", O_RDWR);
+	if (fd < 0) {
 		goto perror;
 	}
+	/*
+	char c;
+	printf("SET CPU Limit\n");
+	printf("cpulimit -p <process> -l <limit>\n");
+	printf("Press key once CPU Limit has been set\n");
+	scanf("%c", &c);
+	*/
 
 	err = enable_stream_directive(fd);
 
@@ -84,7 +128,11 @@ int main(int argc, char **argv)
 		printf("allocate stream resource successful\n");
 	}
 
+	start = rdtsc();
 	compress(inputfile_fd, fd);
+	end = rdtsc();
+
+        printf("CYCLE: %llu\n",end - start);
 
 //	testing if counting is disabled correctly.
 //	computational_read(&f, 0);
@@ -92,6 +140,10 @@ int main(int argc, char **argv)
 
    close(fd);
    close(inputfile_fd);
+
+	
+	sprintf (cmd, "rm %s", infile);
+	system(cmd);
 	return 0;
 
 perror:

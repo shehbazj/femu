@@ -17,6 +17,10 @@
 #include <assert.h>
 #include <stdlib.h>
 #include "zlib.h"
+#include <errno.h>
+#include <stdbool.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #if defined(MSDOS) || defined(OS2) || defined(WIN32) || defined(__CYGWIN__)
 #  include <fcntl.h>
@@ -26,14 +30,15 @@
 #  define SET_BINARY_MODE(file)
 #endif
 
+//#define CHUNK 16384
 #define CHUNK 4096
-//#define CHUNK 4096
 
-int def(FILE *source, FILE *dest, int level);
-int inf(FILE *source, FILE *dest);
-void zerr(int ret);
-int zlib_me(FILE *ifstream, FILE *ofstream, int mode);
-
+static __inline__ unsigned long long rdtsc(void)
+{
+  unsigned hi, lo;
+  __asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
+  return ( (unsigned long long)lo)|( ((unsigned long long)hi)<<32 );
+}
 
 /* Compress from file source to file dest until EOF on source.
    def() returns Z_OK on success, Z_MEM_ERROR if memory could not be
@@ -180,69 +185,86 @@ void zerr(int ret)
     }
 }
 
+bool check_root()
+{
+	if (geteuid() == 0) {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
 
 /* compress or decompress from stdin to stdout */
-/*
 int main(int argc, char **argv)
 {
-    int ret;
+    	int ret = 0;
+	unsigned long long start, end;
+	int s_gb;
+	size_t sz;
+	int fd;
 
 	FILE* ifstream, *ofstream;
 
-	ifstream = fopen("/tmp/inpipe", "r");
+	if (argc != 1) {
+		printf("./host_zlib\n");
+		exit (1);
+	}
+	
+	if (check_root() == false) {
+		printf("Please run as sudo\n");
+		exit(1);
+	}
+
+	ret = mkfifo("/tmp/host_compression_pipe", 0666);
+        if (ret < 0 ) {
+                printf("Creating Pipe Failed\n");
+        }else { 
+                printf("Pipe Created\n");
+        }
+
+	char infile[100];
+	strcpy (infile, "/tmp/host_compression_pipe");
+
+	ifstream = fopen(infile, "r");
 	if (ifstream == NULL) {
 		printf("inpipe failed\n");
 		exit(1);
 	}
-	ofstream = fopen("/tmp/outpipe", "w");
+	ofstream = fopen("/dev/nvme0n1", "w");
 	if (ofstream == NULL) {
-		printf("outfile failed\n");
+		printf("infile failed %s\n", strerror(errno));
 		exit(1);
 	}
 
-    SET_BINARY_MODE(ifstream);
-    SET_BINARY_MODE(ofstream);
+	/*
+	char c;
+	printf("SET CPU Limit\n");
+	printf("cpulimit -p <process> -l <limit>\n");
+	printf("Press key once CPU Limit has been set\n");
+	scanf("%c", &c);
+	*/
 
-    // avoid end-of-line conversions
+	SET_BINARY_MODE(ifstream);
+	SET_BINARY_MODE(ofstream);
+
+    /* avoid end-of-line conversions */
 //    SET_BINARY_MODE(stdin);
 //    SET_BINARY_MODE(stdout);
 
-    // do compression if no arguments 
-    if (argc == 1) {
-        ret = def(ifstream, ofstream, Z_DEFAULT_COMPRESSION);
+//	start = rdtsc();	
+	ret = def(ifstream, ofstream, Z_DEFAULT_COMPRESSION);
+//	end = rdtsc();
+
+//        printf("CYCLE: %llu\n",end - start);
 //        ret = def(stdin, stdout, Z_DEFAULT_COMPRESSION);
         if (ret != Z_OK)
             zerr(ret);
-        return ret;
-    }
-
-    // do decompression if -d specified 
-    else if (argc == 2 && strcmp(argv[1], "-d") == 0) {
-        ret = inf(stdin, stdout);
-        if (ret != Z_OK)
-            zerr(ret);
-        return ret;
-    }
-
-    // otherwise, report usage 
-    else {
-        fputs("zpipe usage: zpipe [-d] < source > dest\n", stderr);
-        return 1;
-    }
-	fclose(ifstream);
-	fclose(ofstream);
-}
-*/
-
-int zlib_me(FILE *ifstream, FILE *ofstream, int mode) {
-	   SET_BINARY_MODE(ifstream);
-	   SET_BINARY_MODE(ofstream);
-	
-        	int ret = def(ifstream, ofstream, Z_DEFAULT_COMPRESSION);
-        if (ret != Z_OK)
-            zerr(ret);
 
 	fclose(ifstream);
 	fclose(ofstream);
+
+	unlink("/tmp/host_compression_pipe");
+
         return ret;
 }

@@ -150,7 +150,7 @@ void computational_process (void)
 
         struct timespec t;
         t.tv_sec = 0;
-        t.tv_nsec = 1;
+        t.tv_nsec = 0;
         sigset_t origmask;
 	int nfds = 2;
 
@@ -630,18 +630,19 @@ static uint16_t nvme_rw(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     assert((nlb << data_shift) == req->qsg.size);
 
     if (req->is_write) {
-       femu_debug("%s, opcode:%#x, offset:%#lx, size:%#lx, dtype:%#x, dspec:%#x\n",
-               __func__, rw->opcode, data_offset, data_size, dtype, dspec);
+     //  femu_debug("%s, opcode:%#x, offset:%#lx, size:%#lx, dtype:%#x, dspec:%#x\n",
+     //          __func__, rw->opcode, data_offset, data_size, dtype, dspec);
        if (dtype) {
-		printf("dtype detected %d\n", dtype);
+//		printf("dtype detected %d\n", dtype);
           nvme_update_str_stat(n, ns, dspec);
 	}
     }
 
+	//enum NvmeComputeDirectiveType computetype = ns->id_dir->dir_enable[1];
 	enum NvmeComputeDirectiveType computetype = NVME_DIR_COMPUTE_NONE;
-
 	if (n->computation_mode == FEMU_COMPUTE_ON)
-        computetype = ns->id_dir->dir_enable[1];
+	        computetype = ns->id_dir->dir_enable[1];
+	//printf("%s():compute type = %d\n", __func__,computetype);
 
     req->slba = slba;
     req->meta_size = 0;

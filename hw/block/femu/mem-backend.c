@@ -9,7 +9,7 @@
 #include <string.h>
 #include <poll.h>
 
-#define DEBUG_COMPRESSED_FILE 0
+//#define DEBUG_COMPRESSED_FILE 0
 
 #define DEBUG 0
 #define debug_print(args ...) if (DEBUG) fprintf(stderr, args)
@@ -152,7 +152,7 @@ long int findSize(const char *file_name)
 uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_recv_ptr, int ctype_fd, void *mb, uint64_t mb_oft,
 	dma_addr_t cur_len, AddressSpace *as, dma_addr_t *cur_addr, uint32_t flash_write_delay, uint32_t flash_read_delay, enum NvmeComputeDirectiveType computetype)
 {
-	int ret, rret, wret;
+	int rret, wret;
 
 	int total_bytes_written=0;
 
@@ -161,6 +161,7 @@ uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_re
 	int computational_fd_send = *computational_fd_send_ptr;
 #ifdef DEBUG_COMPRESSED_FILE
 	int compressed_file_fd;
+	int ret;
 #endif
 	memset(fds, 0 , sizeof(fds));
 
@@ -181,7 +182,7 @@ uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_re
 
         struct timespec t;
         t.tv_sec = 0;
-        t.tv_nsec = 1;
+        t.tv_nsec = 0;
         sigset_t origmask;
 
         int rc;
@@ -260,11 +261,11 @@ uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_re
 	}
 #ifdef DEBUG_COMPRESSED_FILE
 	ret = close(compressed_file_fd);
-#endif
 	if (ret < 0) {
 		printf("%s():file close failed\n", __func__);
 		exit(1);
 	}
+#endif
 
 	return total_bytes_written;
 }
@@ -273,13 +274,14 @@ uint64_t do_compression(int *computational_fd_send_ptr, int *computational_fd_re
 uint64_t do_compression_cleanup(int *computational_fd_send_ptr, int *computational_fd_recv_ptr, void *mb, uint64_t mb_oft,
 	uint32_t flash_write_delay, uint32_t flash_read_delay, enum NvmeComputeDirectiveType c)
 {
-	int ret, wret;
+	int ret;
 
 	int total_bytes_written = 0;
 	int computational_fd_send = *computational_fd_send_ptr;
 	int computational_fd_recv = *computational_fd_recv_ptr;
 #ifdef DEBUG_COMPRESSED_FILE
 	int compressed_file_fd;
+	int wret;
 #endif
 	uint8_t compress_buf[BLOCK_SIZE];
 
