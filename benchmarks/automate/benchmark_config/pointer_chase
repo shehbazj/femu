@@ -1,0 +1,14 @@
+BMNAME=pointer_chase
+CPU=2
+MEMORY=2G
+DEVSIZE=1024
+COMPUTEMODE=1
+FLASH_READ_LATENCY=0
+FLASH_WRITE_LATENCY=10000
+CPU_LIMIT=50
+PREP_SCRIPTS=( pointer_generator write_pointer_to_disk )
+PREP_ARG_START=( 0 4 )
+PREP_ARG_END=( 3 4 )
+PREP_ARGS=( 100 10000 3 3 /dev/nvme0n1 )
+TESTSCRIPT=stream_pointer_reader
+PARAMS=( /dev/nvme0n1 )

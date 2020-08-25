@@ -842,10 +842,10 @@ static uint16_t nvme_dir_send(FemuCtrl *n, NvmeCmd *cmd)
                     ns->id_dir->dir_enable[0] &= ~NVME_DIR_IDF_STREAMS;
             }
 			if(endir) {
-				printf("enable compute type %d\n", computetype);
+				printf("%s():enable compute type %d\n", __func__, computetype);
 				ns->id_dir->dir_enable[1] = computetype;
 			}else {
-				printf("disable previous compute type %d\n", ns->id_dir->dir_enable[1]);
+				printf("%s():disable previous compute type %d\n", __func__, ns->id_dir->dir_enable[1]);
 				ns->id_dir->dir_enable[1] = 0;
 			}
 		// TODO add other compute operations here.

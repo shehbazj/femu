@@ -52,7 +52,6 @@
 /module_block.h
 /vscclient
 /fsdev/virtfs-proxy-helper
-*.[1-9]
 *.a
 *.aux
 *.cp
