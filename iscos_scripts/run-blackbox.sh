@@ -7,6 +7,7 @@
 IMGDIR=$HOME/lighthost/iskos_images
 # virtual machine disk image
 OSIMGF=$IMGDIR/40G
+qemu-img create $IMGDIR/PRIMARY 4G
 
 FEMU_BUILDDIR=$HOME/femu/build_femu
 
@@ -29,6 +30,8 @@ sudo $FEMU_BUILDDIR/x86_64-softmmu/qemu-system-x86_64 \
     -device scsi-hd,drive=hd0 \
     -drive file=$OSIMGF,if=none,aio=native,cache=none,format=raw,id=hd0 \
     -device femu,devsz_mb=10240,femu_mode=1,computation_mode=1,flash_read_latency=0,flash_write_latency=10000 \
+    -device scsi-hd,drive=hd1 \
+	-drive file=$IMGDIR/PRIMARY,if=none,aio=native,cache=none,format=raw,id=hd1 \
     -net user,hostfwd=tcp::8080-:22 \
     -net nic,model=virtio #\
 #    -qmp unix:./qmp-sock,server,nowait 2>&1 | tee log
